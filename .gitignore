@@ -1,0 +1,11 @@
+.vscode
+cutouts/*
+Good_Cutouts
+Images/*
+masks/*
+models/*
+svg/*
+svg_BW
+svg_to_png
+sam_vit_b_01ec64.pth
+sam_vit_l_0b3195.pth
