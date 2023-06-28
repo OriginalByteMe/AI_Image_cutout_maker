@@ -7,5 +7,7 @@ models/*
 svg/*
 svg_BW
 svg_to_png
-sam_vit_b_01ec64.pth
-sam_vit_l_0b3195.pth
+sam_vit_*
+retinanet_resnet50_fpn_coco-eeacb38b.pth
+video_images/*
+yolo*
