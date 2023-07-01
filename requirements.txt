@@ -71,7 +71,6 @@ PyYAML==6.0
 pyzmq==25.1.0
 requests==2.31.0
 rich==13.4.2
-scipy==1.11.0
 scooby==0.7.2
 seaborn==0.12.2
 segment-anything @ git+https://github.com/facebookresearch/segment-anything.git@6fdee8f2727f4506cfbbe553e23b895e27956588
