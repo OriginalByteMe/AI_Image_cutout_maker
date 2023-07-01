@@ -1,8 +1,0 @@
-Images/*
-masks/*
-cutouts/*
-Good_Cutouts/*
-.venv/*
-.conda/*
-yolo*
-sam_vit*

@@ -6,3 +6,4 @@ Good_Cutouts/*
 .conda/*
 yolo*
 sam_vit*
+cutouts_*
