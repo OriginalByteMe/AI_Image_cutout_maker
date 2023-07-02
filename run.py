@@ -120,10 +120,11 @@ def process_image(image: Image, name: str, prompt: str, model, predictor) -> lis
 
 
 def create_cutout(image: Image, name, masks: list) -> None:
-    # Create the cutouts directory if it doesn't exist
-    os.makedirs("cutouts", exist_ok=True)
     # Convert the image to a numpy array
     image_np = np.array(image)
+    
+    # Remove extension from name
+    name = os.path.splitext(name)[0]
 
     # Loop through all the masks
     for i, mask in enumerate(masks):
@@ -154,7 +155,7 @@ def create_cutout(image: Image, name, masks: list) -> None:
 
         # Save the cutout to the cutouts folder
         cutout_filename = f"{name}_cutout_{i}.png"
-        cutout_path = os.path.join("cutouts", cutout_filename)
+        cutout_path = os.path.join("./generated_images", cutout_filename)
         cutout_pil.save(cutout_path)
   
 
