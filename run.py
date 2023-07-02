@@ -14,7 +14,7 @@ def generate_cutout(**inputs) -> None:
     images = inputs["images"]
 
     print("Images are: ", images)
-
+    os.mkdir("./generated_images")   
     # Get the current working directory
     cwd = os.getcwd()
 

@@ -1,5 +1,4 @@
 import beam
-
 app = beam.App(
     name="cutout_generator",
     cpu=1,
@@ -16,7 +15,7 @@ app.Trigger.TaskQueue(
 )
 
 # File to store image outputs
-app.Output.Dir(path="./cutouts", name="cutout_images")
+app.Output.Dir(path="generated_images", name="cutout_images")
 app.Mount.PersistentVolume(path="./uploaded_images", name="images")
 app.Mount.PersistentVolume(path="./masks", name="masks")
 app.Mount.PersistentVolume(path="./models", name="models")
