@@ -10,7 +10,7 @@ app = beam.App(
 )
 
 app.Trigger.TaskQueue(
-    inputs={"images": beam.Types.Json() , "prompt": beam.Types.String()},
+    inputs={"image": beam.Types.Image(raw=False) , "prompt": beam.Types.String()},
     handler="run.py:generate_cutout"
 )
 
