@@ -4,17 +4,22 @@ import numpy as np
 from pycocotools import mask as maskUtils
 from segment_anything import sam_model_registry, SamPredictor
 from ultralytics import YOLO
+from io import BytesIO
+import base64
 import cv2
 from PIL import Image
-import boto3
+from s3FileHandler import Boto3Client
+
+access_key_id = os.environ["AWS_ACCESS_KEY_ID"]
+secret_access_key = os.environ["AWS_SECRET_ACCESS_KEY"]
+region_name = "auto"
+client = Boto3Client(access_key_id, secret_access_key)
 
 
 def generate_cutout(**inputs) -> None:
     prompt = inputs["prompt"]
-    images = inputs["images"]
+    image = inputs["image"]
 
-    print("Images are: ", images)
-    os.mkdir("./generated_images")   
     # Get the current working directory
     cwd = os.getcwd()
 
@@ -37,25 +42,11 @@ def generate_cutout(**inputs) -> None:
 
     # LOAD YOLO MODEL
     model = YOLO("./models/yolov8x.pt")
-    access_key_id = os.environ["AWS_ACCESS_KEY_ID"]
-    secret_access_key = os.environ["AWS_SECRET_ACCESS_KEY"]
-    # Get images:
-    s3 = boto3.resource(
-        "s3",
-        endpoint_url="https://13583f5ff84f5693a4a859a769743849.r2.cloudflarestorage.com",
-        aws_access_key_id=access_key_id,
-        aws_secret_access_key=secret_access_key,
-    )
 
-    # List all buckets
-    for i, filename in enumerate(images):
-        print("Filename is: ", filename)
-        # Retrieve the image from the AWS bucket
-        s3.Bucket("cutoutimagestore").download_file(filename, filename)
-        image = Image.open(filename)
-
-        # Process the image and append the cutouts to the list
-        process_image(image, filename, prompt, model, predictor)
+    # Process the image and append the cutouts to the list
+    result = process_image(image, "output.jpg", prompt, model, predictor)
+    
+    return result
 
 
 
@@ -88,7 +79,7 @@ def process_image(image: Image, name: str, prompt: str, model, predictor) -> lis
                     point_coords=None,
                     point_labels=None,
                     box=box.xyxy[0].astype(int),
-                    multimask_output=True,
+                    multimask_output=False,
                 )
                 if scores[0] < 0.6:
                     print("Score is too low, skipping, score is: ", scores[0])
@@ -125,7 +116,7 @@ def create_cutout(image: Image, name, masks: list) -> None:
     
     # Remove extension from name
     name = os.path.splitext(name)[0]
-
+    preview_urls = []
     # Loop through all the masks
     for i, mask in enumerate(masks):
         # Decode the mask
@@ -154,9 +145,17 @@ def create_cutout(image: Image, name, masks: list) -> None:
         cutout_pil = Image.fromarray(cutout)
 
         # Save the cutout to the cutouts folder
-        cutout_filename = f"{name}_cutout_{i}.png"
-        cutout_path = os.path.join("./generated_images", cutout_filename)
-        cutout_pil.save(cutout_path)
+        cutout_key = f"{name}_cutout_{i}.png"
+        # Upload the cutout to the S3 bucket
+        bucket_name = "cutoutimagestore"
+        file_body = BytesIO()
+        cutout_pil.save(file_body, format="png")
+        file_body.seek(0)
+        client.upload_to_s3(bucket_name, file_body, cutout_key)
+        url = client.generate_presigned_url(bucket_name, cutout_key)
+        preview_urls.append(url)
+    return url
+
   
 
 
@@ -164,3 +163,8 @@ def list_directories(path):
     for root, dirs, files in os.walk(path):
         for dir in dirs:
             print(os.path.join(root, dir))
+
+def list_files(directory):
+    for filename in os.listdir(directory):
+        if os.path.isfile(os.path.join(directory, filename)):
+            print(filename)
