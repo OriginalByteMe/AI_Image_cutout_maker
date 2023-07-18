@@ -10,11 +10,7 @@ import cv2
 from PIL import Image
 from s3FileHandler import Boto3Client
 
-access_key_id = os.environ["AWS_ACCESS_KEY_ID"]
-secret_access_key = os.environ["AWS_SECRET_ACCESS_KEY"]
-region_name = "auto"
-client = Boto3Client(access_key_id, secret_access_key)
-
+client = Boto3Client()
 
 def generate_cutout(**inputs) -> None:
     prompt = inputs["prompt"]
