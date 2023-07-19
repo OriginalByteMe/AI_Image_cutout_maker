@@ -49,6 +49,10 @@ class CutoutHandler:
 
         # Add the console handler to the logger
         self.logger.addHandler(console_handler)
+        
+        self.cutout_folder = "generated_images"
+        if not os.path.exists(self.cutout_folder):
+            os.makedirs(self.cutout_folder)
 
     def process_image(self, image: Image, name: str, prompt: str) -> list:
         self.logger.debug(f"Processing image '{name}' with prompt '{prompt}'")
@@ -57,13 +61,13 @@ class CutoutHandler:
         image = image.convert("RGB")
         # Convert the image to a numpy array
         image_np = np.array(image)
-
+        print("array_shape: ",image_np.shape)
         # Convert the image to RGB format
         image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
 
         # Run the model on the image
         results = self.model(image_np)
-
+        # print(results)
         # Set the image for the SegmentAnything predictor
         self.predictor.set_image(image_np)
 
@@ -156,7 +160,7 @@ class CutoutHandler:
 
             # Save the cutout to a file
             cutout_filename = f"{name}_{i+1}.png"
-            cutout_path = os.path.join("cutouts", cutout_filename)
+            cutout_path = os.path.join(self.cutout_folder, cutout_filename)
             cutout_pil.save(cutout_path)
 
             self.logger.debug(

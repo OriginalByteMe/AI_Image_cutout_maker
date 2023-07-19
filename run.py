@@ -3,6 +3,7 @@ import json
 import numpy as np
 from pycocotools import mask as maskUtils
 from segment_anything import sam_model_registry, SamPredictor
+from cutoutHandler import CutoutHandler
 from ultralytics import YOLO
 from io import BytesIO
 import base64
@@ -50,6 +51,22 @@ logger.addHandler(console_handler)
 
 client = Boto3Client()
 
+#  LOAD SEGMENT ANYTHING MODEL
+sam_checkpoint = "./models/sam_vit_h_4b8939.pth"
+model_type = "vit_h"
+
+device = "cuda"
+
+sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+sam.to(device=device)
+
+predictor = SamPredictor(sam)
+
+# LOAD YOLO MODEL
+model = YOLO("./models/yolov8x.pt")
+
+handler = CutoutHandler(model, predictor)
+
 
 def generate_cutout(**inputs) -> None:
     prompt = inputs["prompt"]
@@ -60,22 +77,10 @@ def generate_cutout(**inputs) -> None:
         f"Generating cutout for prompt '{prompt}' and image '{image}' with name '{name}'"
     )
 
-    #  LOAD SEGMENT ANYTHING MODEL
-    sam_checkpoint = "./models/sam_vit_h_4b8939.pth"
-    model_type = "vit_h"
-
-    device = "cuda"
-
-    sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
-    sam.to(device=device)
-
-    predictor = SamPredictor(sam)
-
-    # LOAD YOLO MODEL
-    model = YOLO("./models/yolov8x.pt")
 
     # Process the image and append the cutouts to the list
-    cutouts = process_image(image, name, prompt, model, predictor)
+    # cutouts = process_image(image, name, prompt, model, predictor)
+    cutouts = handler.process_image(image, name, prompt)
 
     logger.info(
         f"Generated {len(cutouts)} cutouts for prompt '{prompt}' and image '{image}' with name '{name}'"
