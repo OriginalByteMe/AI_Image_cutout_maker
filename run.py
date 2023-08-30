@@ -164,35 +164,36 @@ def create_cutout(image: Image, name: str, masks_list: list) -> list:
     for i, mask in enumerate(masks_list):
         logger.debug(f"Generating cutout {i+1} of {len(masks_list)} for image '{name}'")
 
-        # Convert the mask to a binary mask
-        mask_binary = maskUtils.decode(mask).astype(np.uint8)
+        
+        size = mask["size"]
+        counts = mask["counts"]
+        mask_decoded = maskUtils.decode({"size": size, "counts": counts})
+        mask_binary = np.zeros((size[0], size[1]), dtype=np.uint8)
+        mask_binary[mask_decoded > 0] = 1
 
-        # Apply the mask to the image
-        image_masked = cv2.bitwise_and(image, image, mask=mask_binary)
+        # Resize the mask to match the shape of the image
+        mask_resized = cv2.resize(mask_decoded, (image_np.shape[1], image_np.shape[0]))
 
-        # Find the bounding box of the mask
-        contours, _ = cv2.findContours(
-            mask_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-        )
-        x, y, w, h = cv2.boundingRect(contours[0])
+        # Extract the cutout from the image using the mask
+        cutout = image_np * mask_resized[..., np.newaxis]
 
-        # Crop the cutout from the masked image
-        cutout = image_masked[y : y + h, x : x + w]
+        # Create an alpha channel for the cutout image
+        alpha = np.zeros(cutout.shape[:2], dtype=np.uint8)
+        alpha[mask_resized > 0] = 255
+        cutout = cv2.merge((cutout, alpha))
 
-        logger.debug(f"Cropped cutout {i+1} of {len(masks_list)} for image '{name}'")
+        # Crop the cutout image to the bounding rectangle
+        x, y, w, h = cv2.boundingRect(mask_resized)
+        cutout = cutout[y : y + h, x : x + w]
 
-        # Convert the cutout to a PIL Image
+        # Create a PIL Image from the cutout numpy array
         cutout_pil = Image.fromarray(cutout)
-
-        logger.debug(
-            f"Converted cutout {i+1} of {len(masks_list)} to PIL Image for image '{name}'"
-        )
 
         # Save the cutout to a file
         cutout_filename = f"{name}_{i+1}.png"
         cutout_path = os.path.join("cutouts", cutout_filename)
         cutout_pil.save(cutout_path)
-
+        
         logger.debug(
             f"Saved cutout {i+1} of {len(masks_list)} to file '{cutout_path}' for image '{name}'"
         )

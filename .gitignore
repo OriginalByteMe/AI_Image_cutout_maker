@@ -11,3 +11,7 @@ sam_vit_*
 retinanet_resnet50_fpn_coco-eeacb38b.pth
 video_images/*
 yolo*
+__pycache__/
+*.jpg
+*.png
+cutout_generator-*

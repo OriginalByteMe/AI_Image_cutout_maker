@@ -19,10 +19,4 @@ app.Trigger.TaskQueue(
     handler="run.py:generate_cutout",
 )
 app.Output.Dir(path="generated_images", name="images")
-
-# File to store image outputs
-app.Output.Dir(path="generated_images", name="cutout_images")
-app.Mount.PersistentVolume(path="./uploaded_images", name="images")
-app.Mount.PersistentVolume(path="./masks", name="masks")
 app.Mount.PersistentVolume(path="./models", name="models")
-app.Mount.PersistentVolume(path="./svg", name="svgs")
