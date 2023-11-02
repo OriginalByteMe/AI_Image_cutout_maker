@@ -1,5 +1,7 @@
 import torch
 from groundingdino.util.inference import Model
+from typing import List
+
 
 class Dino:
   def __init__(self, classes, box_threshold, text_threshold, model_config_path, model_checkpoint_path):
@@ -9,10 +11,18 @@ class Dino:
     self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     self.grounding_dino_model = Model(model_config_path=model_config_path, model_checkpoint_path=model_checkpoint_path)
 
+  def enhance_class_name(self, class_names: List[str]) -> List[str]:
+    return [
+        f"all {class_name}s"
+        for class_name
+        in class_names
+    ]
+
   def predict(self, image):
-    detections = self.grounding_dino_model.predict(image, self.classes, self.box_threshold, self.text_threshold)
+    detections = self.grounding_dino_model.predict_with_classes(image=image, classes=self.enhance_class_name(class_names=self.classes), box_threshold=self.box_threshold, text_threshold=self.text_threshold)
     detections = detections[detections.class_id != None]
     return detections
+  
 # Example usage
 # dino = Dino(classes=['person', 'nose', 'chair', 'shoe', 'ear', 'hat'],
 #       box_threshold=0.35,

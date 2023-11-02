@@ -13,14 +13,14 @@ class Boto3Client:
             region_name="auto",
         )
 
-    def download_from_s3(save_path, bucket_name, key):
+    def download_from_s3(self, save_path, bucket_name, key):
         s3_client = boto3.client("s3")
 
         file_path = os.path.join(save_path, key)
         try:
             s3_client.download_file(bucket_name, key, file_path)
         except ClientError as e:
-            print(e)
+            print("BOTO error: ",e)
             return None
 
         return file_path

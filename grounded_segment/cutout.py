@@ -7,9 +7,11 @@ class CutoutCreator:
   def __init__(self, image_folder):
     self.image_folder = image_folder
 
-  def create_cutouts(self, image_name, masks):
+  def create_cutouts(self, image_name, masks, output_folder):
     # Load the image
     image_path = os.path.join(self.image_folder, image_name)
+    for item in os.listdir(self.image_folder):
+      print("Item: ",item)
     if not os.path.exists(image_path):
       print(f"Image {image_name} not found in folder {self.image_folder}")
       return
@@ -27,5 +29,6 @@ class CutoutCreator:
 
       # Save the cutout
       cutout_name = f"{image_name}_cutout_{i}.png"
-      cv2.imwrite(cutout_name, cutout)
+      cutout_path = os.path.join(output_folder, cutout_name)
+      cv2.imwrite(cutout_path, cutout)
 
