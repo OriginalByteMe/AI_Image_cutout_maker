@@ -21,7 +21,7 @@ cutout_generator_image = modal.Image.from_registry("nvcr.io/nvidia/pytorch:22.12
   "pip install -q supervision==0.6.0",
   "wget -q https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth -P weights/",
   "wget -q https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth -P weights/",
-  "wget -q https://media.roboflow.com/notebooks/examples/dog.jpeg -P images/",
+  "wget -q https://media.roboflow.com/notebooks/examples/dog.jpeg -P data/",
   "ls -F",
   "ls -F GroundingDINO/groundingdino/config",
   "ls -F GroundingDINO/groundingdino/models/GroundingDINO/"
@@ -40,9 +40,9 @@ def main(image_name):
   from segment import Segmenter
   from cutout import CutoutCreator
   from s3_handler import Boto3Client
-  SOURCE_IMAGE_PATH = os.path.join(HOME, "images", image_name)
+  SOURCE_IMAGE_PATH = os.path.join(HOME, "data", image_name)
   print(f"SOURCE_IMAGE_PATH: {SOURCE_IMAGE_PATH}")
-  SAVE_IMAGE_PATH = os.path.join(HOME, "images")
+  SAVE_IMAGE_PATH = os.path.join(HOME, "data")
   OUTPUT_CUTOUT_PATH = os.path.join(HOME, "cutouts")
   dino = Dino(classes=['person', 'nose', 'chair', 'shoe', 'ear', 'hat'],
       box_threshold=0.35,
@@ -56,7 +56,7 @@ def main(image_name):
   
   s3 = Boto3Client()
   
-  s3.download_from_s3(SAVE_IMAGE_PATH, "cutoutimagestore", image_name)
+  s3.download_from_s3(SAVE_IMAGE_PATH, "cutout-image-store", f"images/{image_name}")
   
   image = cv2.imread(SOURCE_IMAGE_PATH)
   
@@ -65,5 +65,7 @@ def main(image_name):
   
   detections.mask = segment.segment(image, detections.xyxy)
   
-  cutout.create_cutouts(image_name, detections.mask, OUTPUT_CUTOUT_PATH)
+  cutout.create_cutouts(image_name, detections.mask, OUTPUT_CUTOUT_PATH, "cutout-image-store", s3)
+  
+  return "Success"  
   
