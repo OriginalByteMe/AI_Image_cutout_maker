@@ -4,7 +4,7 @@ boto3==1.26.165
 botocore==1.29.165
 cairocffi==1.6.0
 CairoSVG==2.7.0
-certifi==2023.5.7
+certifi==2023.7.22
 cffi==1.15.1
 charset-normalizer==3.1.0
 cmake==3.26.4
