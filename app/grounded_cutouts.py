@@ -42,14 +42,6 @@ async def upload_image_to_s3(image: UploadFile = File(...)):
     s3_client.upload_to_s3(image.file,"images", image.filename)
     return {"message": "Image uploaded successfully"}
 
-@stub.function(mounts=[Mount.from_local_python_packages("s3_handler")], secret=Secret.from_name("my-aws-secret"))
-@app.get("/create-presigned-cutout/{image_name}")
-async def create_presigned_cutout(image_name: str):
-    from s3_handler import Boto3Client
-    s3_client = Boto3Client()
-    presigned_url = s3_client.generate_presigned_url(image_name)
-    return {"presigned_url": presigned_url}
-
 @stub.function(image=cutout_generator_image, mounts=[local_packages], gpu="T4", secret=Secret.from_name("my-aws-secret"))
 @app.get("/create-cutouts/{image_name}")
 async def create_cutouts(image_name: str):
