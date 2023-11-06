@@ -20,7 +20,7 @@ executing==1.2.0
 filelock==3.12.2
 fonttools==4.40.0
 gitdb==4.0.10
-GitPython==3.1.31
+GitPython==3.1.37
 idna==3.4
 imageai==3.0.3
 jedi==0.18.2
