@@ -4,6 +4,10 @@ import os
 from s3_handler import Boto3Client
 from dino import Dino
 from segment import Segmenter
+from typing import Dict
+import supervision as sv
+import io
+from PIL import Image
 
 HOME = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
 
@@ -15,7 +19,17 @@ class CutoutCreator:
         model_config_path=grounding_dino_config_path,
         model_checkpoint_path=grounding_dino_checkpoint_path)
     self.s3 = Boto3Client()
+    self.mask_annotator = sv.MaskAnnotator()
 
+  def create_annotated_image(self, image, image_name, detections: Dict[str, list]):
+      annotated_image = self.mask_annotator.annotate(scene=image, detections=detections)
+      # Convert annotated image to bytes
+      img_bytes = io.BytesIO()
+      Image.fromarray(np.uint8(annotated_image)).save(img_bytes, format='PNG')
+      img_bytes.seek(0)
+      # Upload bytes to S3
+      self.s3.upload_to_s3(img_bytes.read(), "cutouts", f"{image_name}_annotated.png")
+  
   def create_cutouts(self, image_name, sam_checkpoint_path):
     
     # Download image from s3
@@ -54,4 +68,7 @@ class CutoutCreator:
       # Upload the cutout to S3
       with open(cutout_path, "rb") as f:
         self.s3.upload_to_s3(f.read(), "cutouts",f"{image_name}/{cutout_name}")
+
+    # Create annotated image
+    # self.create_annotated_image(image, f"{image_name}_{i}", detections)
 
