@@ -64,6 +64,20 @@ async def upload_image_to_s3(image: UploadFile = File(...)):
     s3_client.upload_to_s3(image.file, "images", image.filename)
     return {"message": "Image uploaded successfully"}
 
+@app.get("/generate-presigned-urls/{image_name}")
+async def generate_presigned_urls(image_name: str):
+    """Generate presigned urls for the cutouts of an image.
+
+    Args:
+        image_name (str): Name of image to generate presigned urls for.
+
+    Returns:
+        List[str]: List of presigned urls for the cutouts of an image.
+    """
+    from s3_handler import Boto3Client
+
+    s3_client = Boto3Client()
+    return s3_client.generate_presigned_urls(f"cutouts/{image_name}")
 
 @stub.function(
     image=cutout_generator_image,
@@ -94,6 +108,33 @@ async def create_cutouts(image_name: str, classes: List[str] = Body(...)):
     cutout.create_cutouts(image_name, SAM_CHECKPOINT_PATH)
     return s3.generate_presigned_urls(f"cutouts/{image_name}")
 
+@app.post("/create-cutouts")
+async def create_cutouts(image_names: List[str] = Body(...), classes: List[str] = Body(...)):
+    """Create cutouts from multiple images and upload them to S3.
+
+    Args:
+        image_names (List[str]): List of image names to create cutouts from.
+        classes (List[str], optional): A list of classes for the AI to detect for. Defaults to Body(...).
+
+    Returns:
+        Dict[str, List[str]]: A dictionary where the keys are the image names and the values are the lists of presigned URLs for the cutouts.
+    """
+    from cutout import CutoutCreator
+    from s3_handler import Boto3Client
+
+    s3 = Boto3Client()
+    cutout = CutoutCreator(
+        classes=classes,
+        grounding_dino_checkpoint_path=GROUNDING_DINO_CHECKPOINT_PATH,
+        grounding_dino_config_path=GROUNDING_DINO_CONFIG_PATH,
+    )
+
+    result = {}
+    for image_name in image_names:
+        cutout.create_cutouts(image_name, SAM_CHECKPOINT_PATH)
+        result[image_name] = s3.generate_presigned_urls(f"cutouts/{image_name}")
+
+    return result
 
 @stub.function(
     image=cutout_generator_image,
