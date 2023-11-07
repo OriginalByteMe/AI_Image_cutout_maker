@@ -32,7 +32,26 @@ The purpose of this project is to automate the process of creating cutouts from 
 
 As mentioned above, this project is being hosted through Modal, this also does mean that its using the modal API. This means that you will need to have a modal account and have the modal CLI installed. You can find instructions on how to do this [here](https://docs.modal.ai/docs/getting-started). I'am planning on dockerizing this project as well down the line so that it can be used without the modal CLI.
 
-[![Diagram of workflow](https://mermaid.ink/img/pako:eNptU8tu2zAQ_JUFLz1YNvyQHImHHPIqCrRFEcOXQBeGXDuEJVLlI61r-N9LkQriOOaJS87s7A6XB8K1QEKJxd8eFcc7ybaGtbWCsBh32sDaoklxv4Px9TXceqe9e7insO4azQR8a9kWE-jtLgJXCwq3rGnAaei8fQHZA_vo2fMduguUFNzcvxO5QeYQeLw4ZdxExiiq3Ok_KpaSFBJstYBxQIxPkq5QDeXCM-O7hPupQ379Grp7B_4ymqO1aAdhCyPQ7iVgRPLInpfy1vDgyUfYJYmvqNCE1mwQw7GVW4UC1o_fv1jQG-iGAgRsZIOX1EYnD_GIzhsFjbQukXHI501jz22O3P41g2_Sdg3bn6hFA-3Zi3-22MKrZH32hKwVyUiLpmVShHk69Kc1CX61WBMatoKZXU1qdQw4FipZ7RUn1BmPGfGdCDYMs0fohjU2nHZMPWn9ISb0QP4Suign-TTPi_myms6Wy6rMyJ7QIp_MyvlVXpTzYjmdV-UxI_9igumkSqusAuWqnBUZQSHDdP9I4x9_wfE_v6T5PA?type=png)](https://mermaid.live/edit#pako:eNptU8tu2zAQ_JUFLz1YNvyQHImHHPIqCrRFEcOXQBeGXDuEJVLlI61r-N9LkQriOOaJS87s7A6XB8K1QEKJxd8eFcc7ybaGtbWCsBh32sDaoklxv4Px9TXceqe9e7insO4azQR8a9kWE-jtLgJXCwq3rGnAaei8fQHZA_vo2fMduguUFNzcvxO5QeYQeLw4ZdxExiiq3Ok_KpaSFBJstYBxQIxPkq5QDeXCM-O7hPupQ379Grp7B_4ymqO1aAdhCyPQ7iVgRPLInpfy1vDgyUfYJYmvqNCE1mwQw7GVW4UC1o_fv1jQG-iGAgRsZIOX1EYnD_GIzhsFjbQukXHI501jz22O3P41g2_Sdg3bn6hFA-3Zi3-22MKrZH32hKwVyUiLpmVShHk69Kc1CX61WBMatoKZXU1qdQw4FipZ7RUn1BmPGfGdCDYMs0fohjU2nHZMPWn9ISb0QP4Suign-TTPi_myms6Wy6rMyJ7QIp_MyvlVXpTzYjmdV-UxI_9igumkSqusAuWqnBUZQSHDdP9I4x9_wfE_v6T5PA)
+
+## Workflow diagriam for how 
+```mermaid
+sequenceDiagram
+    actor User
+    User ->> CutoutFE: Upload Image
+    CutoutFE ->> S3: Call to push image to bucket
+    CutoutFE ->> CutoutBE: Call to create cutout
+    CutoutBE ->>+ Modal: Spin up instance with container
+    Modal ->>- CutoutBE: Allow that container to be used by CutoutBE URL 
+    CutoutBE ->>+ S3: Download image 
+    S3 -->>- CutoutBE: Send Image back
+    Note over CutoutBE: Processes cutouts + other diagrams
+    CutoutBE -->> S3: Upload cutouts to bucket
+    Note over CutoutBE: Generates Pre-signed URL's of processed files
+    Note over CutoutFE: If need be FE can also create list of presigned urls via s3
+    CutoutBE -->>+ CutoutFE: Return list of presigned urls
+    CutoutFE -->>+ User: Display processed images
+    User ->> S3: Download images via url
+```
 
 
 ## To-Do
