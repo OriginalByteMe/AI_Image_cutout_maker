@@ -33,7 +33,7 @@ The purpose of this project is to automate the process of creating cutouts from 
 As mentioned above, this project is being hosted through Modal, this also does mean that its using the modal API. This means that you will need to have a modal account and have the modal CLI installed. You can find instructions on how to do this [here](https://docs.modal.ai/docs/getting-started). I'am planning on dockerizing this project as well down the line so that it can be used without the modal CLI.
 
 
-## Workflow diagriam for how 
+## Workflow diagriam for how BE processes and returns values
 ```mermaid
 sequenceDiagram
     actor User
