@@ -7,20 +7,20 @@ class Boto3Client:
     def __init__(self):
         self.s3 = boto3.client(
             "s3",
-            endpoint_url="https://13583f5ff84f5693a4a859a769743849.r2.cloudflarestorage.com",
             aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
             aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
-            region_name="auto",
+            region_name=os.environ["AWS_REGION"],
         )
 
-    def download_from_s3(bucket_name, key):
+    def download_from_s3(self, save_path, bucket_name, key):
         s3_client = boto3.client("s3")
 
-        file_path = os.path.join(os.getcwd(), key)
+        file_name = key.split("/")[-1]
+        file_path = os.path.join(save_path, file_name)
         try:
             s3_client.download_file(bucket_name, key, file_path)
         except ClientError as e:
-            print(e)
+            print("BOTO error: ",e)
             return None
 
         return file_path
