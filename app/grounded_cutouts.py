@@ -1,11 +1,25 @@
 import os
 from modal import asgi_app, Secret, Stub, Mount, Image
-from fastapi import FastAPI, File, UploadFile, Body
+from fastapi import FastAPI, File, UploadFile, Body, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 
 app = FastAPI()
 
 stub = Stub(name="cutout_generator")
+
+origins = [
+    "http://localhost:3000",  # localdevelopment
+    "https://cutouts.noahrijkaard.com",  # main website
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 local_packages = Mount.from_local_python_packages(
     "cutout", "dino", "segment", "s3_handler", "fastapi", "starlette"
@@ -59,10 +73,18 @@ async def upload_image_to_s3(image: UploadFile = File(...)):
         str: Message indicating whether the upload was successful.
     """
     from s3_handler import Boto3Client
-
+    from botocore.exceptions import BotoCoreError, NoCredentialsError
+    
     s3_client = Boto3Client()
-    s3_client.upload_to_s3(image.file, "images", image.filename)
-    return {"message": "Image uploaded successfully"}
+    try:
+        s3_client.upload_to_s3(image.file, "images", image.filename)
+    except NoCredentialsError as e:
+        raise HTTPException(status_code=401, detail="No AWS credentials found") from e
+    except BotoCoreError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="An error occurred while uploading the image") from e
+    return {"message": "Image uploaded successfully", "status_code": 200}
 
 @app.get("/generate-presigned-urls/{image_name}")
 async def generate_presigned_urls(image_name: str):

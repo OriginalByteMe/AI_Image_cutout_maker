@@ -1,7 +1,7 @@
 import os
 import boto3
-from botocore.exceptions import ClientError
-
+import logging
+from botocore.exceptions import ClientError, BotoCoreError, NoCredentialsError
 
 class Boto3Client:
     def __init__(self):
@@ -29,11 +29,22 @@ class Boto3Client:
         return file_path
 
     def upload_to_s3(self, file_body, folder, image_name):
-        self.s3.put_object(
-            Body=file_body,
-            Bucket=os.environ["CUTOUT_BUCKET"],
-            Key=f"{folder}/{image_name}",
-        )
+        try:
+            self.s3.put_object(
+                Body=file_body,
+                Bucket=os.environ["CUTOUT_BUCKET"],
+                Key=f"{folder}/{image_name}",
+            )
+            logging.info(f"Successfully uploaded {image_name} to {folder}")
+        except NoCredentialsError as e:
+            logging.error("No AWS credentials found")
+            raise
+        except BotoCoreError as e:
+            logging.error(f"An error occurred with Boto3: {e}")
+            raise
+        except Exception as e:
+            logging.error(f"An error occurred while uploading the image: {e}")
+            raise
 
     def generate_presigned_urls(self, folder, expiration=3600):
         try:
