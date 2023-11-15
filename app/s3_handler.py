@@ -3,6 +3,7 @@ import boto3
 import logging
 from botocore.exceptions import ClientError, BotoCoreError, NoCredentialsError
 
+
 class Boto3Client:
     def __init__(self):
         self.s3 = boto3.client(
@@ -59,9 +60,31 @@ class Boto3Client:
                     Params={"Bucket": os.environ["CUTOUT_BUCKET"], "Key": key},
                     ExpiresIn=expiration,
                 )
-                urls.append(url)
+                # Get object metadata
+                metadata = self.s3.head_object(
+                    Bucket=os.environ["CUTOUT_BUCKET"], Key=key
+                )["Metadata"]
+                urls.append((url, metadata))
         except ClientError as e:
             print(e)
             return None
 
         return urls
+
+    def generate_presigned_url_with_metadata(self, folder, key, expiration=3600):
+        try:
+            # Generate presigned URL
+            url = self.s3.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": os.environ["CUTOUT_BUCKET"], "Key": f"{folder}/{key}"},
+                ExpiresIn=expiration,
+            )
+            # Get object metadata
+            metadata = self.s3.head_object(
+                Bucket=os.environ["CUTOUT_BUCKET"], Key=f"{folder}/{key}"
+            )["Metadata"]
+        except ClientError as e:
+            logging.error("An error occurred: %s", e)
+            return None
+
+        return url, metadata
