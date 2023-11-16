@@ -49,7 +49,7 @@ class Dino:
             box_threshold=self.box_threshold,
             text_threshold=self.text_threshold,
         )
-        detections = detections[detections.class_id is not None]
+        detections = detections[detections.class_id != None]
         return detections
 
 
