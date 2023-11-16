@@ -3,6 +3,28 @@ from modal import asgi_app, Secret, Stub, Mount, Image
 from fastapi import FastAPI, File, UploadFile, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
+import logging
+import json
+from starlette.requests import Request
+
+#======================
+# Logging
+#======================
+# Create a custom logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# Create handlers
+c_handler = logging.StreamHandler()
+c_handler.setLevel(logging.DEBUG)
+
+# Create formatters and add it to handlers
+c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+c_handler.setFormatter(c_format)
+
+# Add handlers to the logger
+logger.addHandler(c_handler)
+
 
 app = FastAPI()
 
@@ -59,7 +81,7 @@ SAM_CHECKPOINT_PATH = os.path.join(HOME, "weights", "sam_vit_h_4b8939.pth")
 
 
 @app.post("/create-cutouts/{image_name}")
-async def create_cutouts(image_name: str, classes: List[str] = Body(...)):
+async def create_cutouts(image_name: str, request: Request):
     """Create cutouts from an image and upload them to S3.
 
     Args:
@@ -69,17 +91,34 @@ async def create_cutouts(image_name: str, classes: List[str] = Body(...)):
     Returns:
         _type_: _description_
     """
+    # Parse the request body as JSON
+    data = await request.json()
+
+    # Get the classes from the JSON data
+    classes = data.get('classes', [])
     from cutout import CutoutCreator
     from s3_handler import Boto3Client
 
-    s3 = Boto3Client()
-    cutout = CutoutCreator(
-        classes=classes,
-        grounding_dino_checkpoint_path=GROUNDING_DINO_CHECKPOINT_PATH,
-        grounding_dino_config_path=GROUNDING_DINO_CONFIG_PATH,
-    )
-    cutout.create_cutouts(image_name, SAM_CHECKPOINT_PATH)
-    return s3.generate_presigned_urls(f"cutouts/{image_name}")
+    try:
+        logger.info(f"Creating cutouts for image {image_name}")
+        logger.info(f"Classes: {classes}")
+        s3 = Boto3Client()
+        cutout = CutoutCreator(
+            classes=classes,
+            grounding_dino_checkpoint_path=GROUNDING_DINO_CHECKPOINT_PATH,
+            grounding_dino_config_path=GROUNDING_DINO_CONFIG_PATH,
+        )
+        print(f"CREATING CUTOUTS FOR IMAGE {image_name}")
+        cutout.create_cutouts(image_name, SAM_CHECKPOINT_PATH)
+        logger.info(f"Cutouts created for image {image_name}")
+        urls = s3.generate_presigned_urls(f"cutouts/{image_name}")
+        logger.info(f"Presigned URLs generated for cutouts of image {image_name}")
+        return urls
+    except Exception as e:
+        logger.error(f"An error occurred while creating cutouts for image {image_name}: {e}")
+        raise
+
+    return urls
 
 @app.post("/create-cutouts")
 async def create_all_cutouts(image_names: List[str] = Body(...), classes: List[str] = Body(...)):
