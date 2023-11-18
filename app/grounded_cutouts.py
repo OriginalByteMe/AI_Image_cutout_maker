@@ -6,6 +6,7 @@ from typing import List
 import logging
 from starlette.requests import Request
 from typing import Dict
+import io
 
 # ======================
 # Logging
@@ -144,7 +145,7 @@ class CutoutCreator:
         self.s3.upload_to_s3(img_bytes.read(), "cutouts", f"{image_name}_annotated.png")
 
     @method()
-    def create_cutouts(self, image_name, sam_checkpoint_path):
+    def create_cutouts(self, image_name):
         import cv2
         import numpy as np
         import io
@@ -157,26 +158,24 @@ class CutoutCreator:
         """
         # Download image from s3
         image_path = self.s3.download_from_s3(
-            os.path.join(self.HOME, "data"), image_name
+            os.path.join(HOME, "data"), image_name
         )
-        if not os.path.exists(os.path.join(self.HOME, "cutouts")):
-            os.mkdir(os.path.join(self.HOME, "cutouts"))
-        image = cv2.imread(image_path)
-        # segment = Segmenter(
-        #     sam_encoder_version="vit_h", sam_checkpoint_path=sam_checkpoint_path
-        # )
-        detections = self.dino.predict(image)
-
-        masks = self.segment.segment(image, detections.xyxy)
-        # Load the image
-        # image_path = os.path.join(self.image_folder, image_name)
-        # for item in os.listdir(self.image_folder):
-        #   print("Item: ",item)
+        if image_path is None:
+            print(f"Failed to download image {image_name} from S3")
+            return
         if not os.path.exists(image_path):
             print(f"Image {image_name} not found in folder {image_path}")
             return
+        
+        if not os.path.exists(os.path.join(HOME, "cutouts")):
+            os.mkdir(os.path.join(HOME, "cutouts"))
 
         image = cv2.imread(image_path)
+
+
+        detections = self.dino.predict(image)
+
+        masks = self.segment.segment(image, detections.xyxy)
 
         # Apply each mask to the image
         for i, mask in enumerate(masks):
@@ -252,7 +251,7 @@ async def create_cutouts(image_name: str, request: Request):
             sam_checkpoint_path=SAM_CHECKPOINT_PATH,
         )
         print(f"CREATING CUTOUTS FOR IMAGE {image_name}")
-        cutout.create_cutouts.remote(image_name, SAM_CHECKPOINT_PATH)
+        cutout.create_cutouts.remote(image_name)
         logger.info(f"Cutouts created for image {image_name}")
         urls = s3.generate_presigned_urls(f"cutouts/{image_name}")
         logger.info(f"Presigned URLs generated for cutouts of image {image_name}")
@@ -300,7 +299,8 @@ async def create_all_cutouts(
     gpu="T4",
     mounts=[local_packages],
     secret=Secret.from_name("my-aws-secret"),
-    allow_concurrent_inputs=4
+    container_idle_timeout=300,
+    keep_warm=1
 )
 @asgi_app()
 def cutout_app():
