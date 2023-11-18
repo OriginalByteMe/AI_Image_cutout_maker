@@ -93,7 +93,6 @@ cutout_generator_image = (
 class CutoutCreator:
     import cv2
     import numpy as np
-    import io
 
     def __init__(
         self,
@@ -290,7 +289,6 @@ async def create_all_cutouts(
     Returns:
         Dict[str, List[str]]: A dictionary where the keys are the image names and the values are the lists of presigned URLs for the cutouts.
     """
-    from cutout import CutoutCreator
     from s3_handler import Boto3Client
 
     s3 = Boto3Client()
@@ -298,11 +296,12 @@ async def create_all_cutouts(
         classes=classes,
         grounding_dino_checkpoint_path=GROUNDING_DINO_CHECKPOINT_PATH,
         grounding_dino_config_path=GROUNDING_DINO_CONFIG_PATH,
+        sam_checkpoint_path = SAM_CHECKPOINT_PATH,
     )
 
     result = {}
     for image_name in image_names:
-        cutout.create_cutouts(image_name, SAM_CHECKPOINT_PATH)
+        cutout.create_cutouts(image_name)
         result[image_name] = s3.generate_presigned_urls(f"cutouts/{image_name}")
 
     return result
