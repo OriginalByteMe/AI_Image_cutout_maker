@@ -1,38 +1,47 @@
 import os
-from modal import asgi_app, Secret, Stub, Mount, Image, method
+import io
+import logging
+from typing import List, Dict
 from fastapi import FastAPI, Body
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
-import logging
 from starlette.requests import Request
-from typing import Dict
-import io
+from modal import asgi_app, Secret, Stub, Mount, Image, method
+
+# ======================
+# Constants
+# ======================
+HOME = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
+GROUNDING_DINO_CONFIG_PATH = os.path.join(
+    HOME, "GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py"
+)
+GROUNDING_DINO_CHECKPOINT_PATH = os.path.join(
+    HOME, "weights", "groundingdino_swint_ogc.pth"
+)
+SAM_CHECKPOINT_PATH = os.path.join(HOME, "weights", "sam_vit_h_4b8939.pth")
 
 # ======================
 # Logging
 # ======================
-# Create a custom logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Create handlers
 c_handler = logging.StreamHandler()
 c_handler.setLevel(logging.DEBUG)
 
-# Create formatters and add it to handlers
 c_format = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
 c_handler.setFormatter(c_format)
 
-# Add handlers to the logger
 logger.addHandler(c_handler)
 
-
+# ======================
+# FastAPI Setup
+# ======================
 app = FastAPI()
 
 stub = Stub(name="cutout_generator")
 
 origins = [
-    "http://localhost:3000",  # localdevelopment
+    "http://localhost:3000",  # local development
     "https://cutouts.noahrijkaard.com",  # main website
 ]
 
@@ -44,6 +53,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ======================
+# Modal Image Setup
+# ======================
 local_packages = Mount.from_local_python_packages("dino", "segment", "s3_handler")
 cutout_generator_image = (
     Image.from_registry("nvcr.io/nvidia/pytorch:22.12-py3")
@@ -70,16 +82,6 @@ cutout_generator_image = (
         "ls -F GroundingDINO/groundingdino/models/GroundingDINO/",
     )
 )
-
-HOME = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
-GROUNDING_DINO_CONFIG_PATH = os.path.join(
-    HOME, "GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py"
-)
-GROUNDING_DINO_CHECKPOINT_PATH = os.path.join(
-    HOME, "weights", "groundingdino_swint_ogc.pth"
-)
-SAM_CHECKPOINT_PATH = os.path.join(HOME, "weights", "sam_vit_h_4b8939.pth")
-
 
 @stub.cls(
     image=cutout_generator_image,
@@ -146,35 +148,37 @@ class CutoutCreator:
 
     @method()
     def create_cutouts(self, image_name):
-        import cv2
-        import numpy as np
-        import io
-
         """Create cutouts from an image and upload them to S3.
 
         Args:
             image_name (string): name of image
-            sam_checkpoint_path (string): path to sam checkpoint
         """
+        import cv2
+        import numpy as np
+
+        # Define paths
+        data_path = os.path.join(HOME, "data")
+        cutouts_path = os.path.join(HOME, "cutouts")
+
         # Download image from s3
-        image_path = self.s3.download_from_s3(
-            os.path.join(HOME, "data"), image_name
-        )
+        image_path = self.s3.download_from_s3(data_path, image_name)
         if image_path is None:
             print(f"Failed to download image {image_name} from S3")
             return
+
+        # Check if image exists
         if not os.path.exists(image_path):
             print(f"Image {image_name} not found in folder {image_path}")
             return
-        
-        if not os.path.exists(os.path.join(HOME, "cutouts")):
-            os.mkdir(os.path.join(HOME, "cutouts"))
 
+        # Create cutouts directory if it doesn't exist
+        os.makedirs(cutouts_path, exist_ok=True)
+
+        # Read image
         image = cv2.imread(image_path)
 
-
+        # Predict and segment image
         detections = self.dino.predict(image)
-
         masks = self.segment.segment(image, detections.xyxy)
 
         # Apply each mask to the image
@@ -188,7 +192,7 @@ class CutoutCreator:
 
             # Save the cutout
             cutout_name = f"{image_name}_cutout_{i}.png"
-            cutout_path = os.path.join(self.HOME, "cutouts", cutout_name)
+            cutout_path = os.path.join(cutouts_path, cutout_name)
             cv2.imwrite(cutout_path, cutout)
 
             # Upload the cutout to S3
@@ -224,7 +228,8 @@ async def warmup():
 
 @app.post("/create-cutouts/{image_name}")
 async def create_cutouts(image_name: str, request: Request):
-    """Create cutouts from an image and upload them to S3.
+    """
+    Create cutouts from an image and upload them to S3.
 
     Args:
         image_name (str): Name of image to create cutouts from.
@@ -233,16 +238,18 @@ async def create_cutouts(image_name: str, request: Request):
     Returns:
         _type_: _description_
     """
-    # Parse the request body as JSON
-    data = await request.json()
-
-    # Get the classes from the JSON data
-    classes = data.get("classes", [])
-    from s3_handler import Boto3Client
-
     try:
-        logger.info(f"Creating cutouts for image {image_name}")
-        logger.info(f"Classes: {classes}")
+        # Log the start of the process
+        logger.info("Creating cutouts for image %s ", image_name)
+
+        # Parse the request body as JSON
+        data = await request.json()
+
+        # Get the classes from the JSON data
+        classes = data.get("classes", [])
+        logger.info("Classes: %s", classes)
+
+        # Initialize the S3 client and the CutoutCreator
         s3 = Boto3Client()
         cutout = CutoutCreator(
             classes=classes,
@@ -250,15 +257,22 @@ async def create_cutouts(image_name: str, request: Request):
             grounding_dino_config_path=GROUNDING_DINO_CONFIG_PATH,
             sam_checkpoint_path=SAM_CHECKPOINT_PATH,
         )
+
+        # Create the cutouts
         print(f"CREATING CUTOUTS FOR IMAGE {image_name}")
         cutout.create_cutouts.remote(image_name)
-        logger.info(f"Cutouts created for image {image_name}")
+        logger.info("Cutouts created for image %s", image_name)
+
+        # Generate presigned URLs for the cutouts
         urls = s3.generate_presigned_urls(f"cutouts/{image_name}")
-        logger.info(f"Presigned URLs generated for cutouts of image {image_name}")
+        logger.info("Presigned URLs generated for cutouts of image %s", image_name)
+
+        # Return the URLs
         return urls
     except Exception as e:
+        # Log any errors that occur
         logger.error(
-            f"An error occurred while creating cutouts for image {image_name}: {e}"
+            "An error occurred while creating cutouts for image %s: %s", image_name, e
         )
         raise
 
