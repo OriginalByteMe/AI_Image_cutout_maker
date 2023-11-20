@@ -237,6 +237,7 @@ async def create_cutouts(image_name: str, request: Request):
     Returns:
         _type_: _description_
     """
+    from s3_handler import Boto3Client
     try:
         # Log the start of the process
         logger.info("Creating cutouts for image %s ", image_name)
