@@ -314,7 +314,6 @@ async def create_all_cutouts(
     mounts=[local_packages],
     secret=Secret.from_name("my-aws-secret"),
     container_idle_timeout=300,
-    keep_warm=1
 )
 @asgi_app()
 def cutout_app():
