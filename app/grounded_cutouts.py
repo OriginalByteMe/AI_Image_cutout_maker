@@ -17,7 +17,9 @@ GROUNDING_DINO_CONFIG_PATH = os.path.join(
 GROUNDING_DINO_CHECKPOINT_PATH = os.path.join(
     HOME, "weights", "groundingdino_swint_ogc.pth"
 )
-SAM_CHECKPOINT_PATH = os.path.join(HOME, "weights", "sam_vit_h_4b8939.pth")
+SAM_CHECKPOINT_PATH_HIGH = os.path.join(HOME, "weights", "sam_vit_h_4b8939.pth")
+SAM_CHECKPOINT_PATH_MID = os.path.join(HOME, "weights", "sam_vit_l_0b3195.pth")
+SAM_CHECKPOINT_PATH_LOW = os.path.join(HOME, "weights", "sam_vit_b_01ec64.pth")
 
 # ======================
 # Logging
@@ -65,7 +67,6 @@ cutout_generator_image = (
     .run_commands(
         "apt-get update",
         "apt-get install -y git wget libgl1-mesa-glx libglib2.0-0",
-        "echo $CUDA_HOME",
         "git clone https://github.com/IDEA-Research/GroundingDINO.git",
         "pip install -q -e GroundingDINO/",
         "mkdir -p /weights",
@@ -76,10 +77,8 @@ cutout_generator_image = (
         "pip install -q supervision==0.6.0",
         "wget -q https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth -P weights/",
         "wget -q https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth -P weights/",
-        "wget -q https://media.roboflow.com/notebooks/examples/dog.jpeg -P images/",
-        "ls -F",
-        "ls -F GroundingDINO/groundingdino/config",
-        "ls -F GroundingDINO/groundingdino/models/GroundingDINO/",
+        "wget -q https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth -P weights/",
+        "wget -q https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth -P weights/",
     )
 )
 
@@ -230,7 +229,7 @@ async def warmup():
         classes=[],
         grounding_dino_checkpoint_path=GROUNDING_DINO_CHECKPOINT_PATH,
         grounding_dino_config_path=GROUNDING_DINO_CONFIG_PATH,
-        sam_checkpoint_path=SAM_CHECKPOINT_PATH,
+        sam_checkpoint_path=SAM_CHECKPOINT_PATH_LOW,
     )
 
     return "Warmed up!"
@@ -257,9 +256,19 @@ async def create_cutouts(image_name: str, request: Request):
         # Parse the request body as JSON
         data = await request.json()
 
-        # Get the classes from the JSON data
+        # Get the classes and accuracy level from the JSON data
         classes = data.get("classes", [])
+        accuracy_level = data.get("accuracy_level", "low")
         logger.info("Classes: %s", classes)
+        logger.info("Accuracy level: %s", accuracy_level)
+
+        # Select the SAM checkpoint path based on the accuracy level
+        if accuracy_level == "high":
+            sam_checkpoint_path = SAM_CHECKPOINT_PATH_HIGH
+        elif accuracy_level == "low":
+            sam_checkpoint_path = SAM_CHECKPOINT_PATH_LOW
+        else:  # Default to mid if the accuracy level is not recognized
+            sam_checkpoint_path = SAM_CHECKPOINT_PATH_MID
 
         # Initialize the S3 client and the CutoutCreator
         s3 = Boto3Client()
@@ -267,7 +276,7 @@ async def create_cutouts(image_name: str, request: Request):
             classes=classes,
             grounding_dino_checkpoint_path=GROUNDING_DINO_CHECKPOINT_PATH,
             grounding_dino_config_path=GROUNDING_DINO_CONFIG_PATH,
-            sam_checkpoint_path=SAM_CHECKPOINT_PATH,
+            sam_checkpoint_path=sam_checkpoint_path,
         )
 
         # Create the cutouts
@@ -287,7 +296,6 @@ async def create_cutouts(image_name: str, request: Request):
             "An error occurred while creating cutouts for image %s: %s", image_name, e
         )
         raise
-
 
 @app.post("/create-cutouts")
 async def create_all_cutouts(
@@ -326,6 +334,7 @@ async def create_all_cutouts(
     mounts=[local_packages],
     secret=Secret.from_name("my-aws-secret"),
     container_idle_timeout=300,
+    retries=1,
 )
 @asgi_app()
 def cutout_app():
