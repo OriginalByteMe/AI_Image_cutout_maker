@@ -83,6 +83,7 @@ cutout_generator_image = (
     )
 )
 
+
 @stub.cls(
     image=cutout_generator_image,
     gpu="T4",
@@ -216,6 +217,7 @@ def main(
         sam_checkpoint_path,
     )
 
+
 @app.get("/warmup")
 async def warmup():
     """Warmup the container.
@@ -223,7 +225,16 @@ async def warmup():
     Returns:
         _type_: return message
     """
+    # Spins up the container and loads the models, this will make it easier to create cutouts later
+    CutoutCreator(
+        classes=[],
+        grounding_dino_checkpoint_path=GROUNDING_DINO_CHECKPOINT_PATH,
+        grounding_dino_config_path=GROUNDING_DINO_CONFIG_PATH,
+        sam_checkpoint_path=SAM_CHECKPOINT_PATH,
+    )
+
     return "Warmed up!"
+
 
 @app.post("/create-cutouts/{image_name}")
 async def create_cutouts(image_name: str, request: Request):
@@ -238,6 +249,7 @@ async def create_cutouts(image_name: str, request: Request):
         _type_: _description_
     """
     from s3_handler import Boto3Client
+
     try:
         # Log the start of the process
         logger.info("Creating cutouts for image %s ", image_name)
@@ -297,7 +309,7 @@ async def create_all_cutouts(
         classes=classes,
         grounding_dino_checkpoint_path=GROUNDING_DINO_CHECKPOINT_PATH,
         grounding_dino_config_path=GROUNDING_DINO_CONFIG_PATH,
-        sam_checkpoint_path = SAM_CHECKPOINT_PATH,
+        sam_checkpoint_path=SAM_CHECKPOINT_PATH,
     )
 
     result = {}
