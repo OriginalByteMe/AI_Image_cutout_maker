@@ -39,9 +39,9 @@ jobs:
       - name: Deploy cutout generator job
         run: |
           cd app
-          modal deploy grounded_cutouts.py --env ${{ steps.vars.outputs.environment }}
+          modal deploy --env ${{ steps.vars.outputs.environment }} grounded_cutouts.py 
       - name: Deploy s3_handler job
         run: |
           cd app/s3_handler
-          modal deploy app.py --env ${{ steps.vars.outputs.environment }}
+          modal deploy --env ${{ steps.vars.outputs.environment }} app.py 
           
