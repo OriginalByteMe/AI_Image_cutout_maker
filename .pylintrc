@@ -1,0 +1,7 @@
+[MESSAGES CONTROL]
+disable=
+    missing-docstring,
+    import-outside-toplevel,
+    line-too-long,
+    attribute-defined-outside-init,
+    no-member

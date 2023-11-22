@@ -20,6 +20,9 @@ class Boto3Client:
             s3_client.download_file(
                 os.environ["CUTOUT_BUCKET"], f"images/{image_name}", file_path
             )
+            print(f"Successfully downloaded {image_name} to {file_path}")
+            print("Directory contents:")
+            print(os.listdir(save_path))
         except ClientError as e:
             print("BOTO error: ", e)
             print(
