@@ -216,6 +216,14 @@ def main(
         sam_checkpoint_path,
     )
 
+@app.get("/")
+async def root():
+    """Root endpoint for the API.
+
+    Returns:
+        _type_: return message
+    """
+    return "Hello world!"
 
 @app.get("/warmup")
 async def warmup():
@@ -317,7 +325,7 @@ async def create_all_cutouts(
         classes=classes,
         grounding_dino_checkpoint_path=GROUNDING_DINO_CHECKPOINT_PATH,
         grounding_dino_config_path=GROUNDING_DINO_CONFIG_PATH,
-        sam_checkpoint_path=SAM_CHECKPOINT_PATH,
+        sam_checkpoint_path=SAM_CHECKPOINT_PATH_LOW,
     )
 
     result = {}
@@ -344,3 +352,4 @@ def cutout_app():
         FastAPI: FastAPI app for creating cutouts.
     """
     return app
+
