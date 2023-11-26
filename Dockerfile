@@ -2,10 +2,10 @@
 FROM nvcr.io/nvidia/pytorch:22.12-py3
 
 # Set the working directory in the container to /app
-WORKDIR /app
+# WORKDIR /app
 
-# Add the current directory contents into the container at /app
-ADD . /app
+# Add the current directory contents into the container
+ADD /app .
 # Install any needed packages
 RUN apt-get update && \
     apt-get install -y git wget libgl1-mesa-glx libglib2.0-0 && \
@@ -36,4 +36,4 @@ COPY app/dummy_modal.py /usr/local/lib/python3.8/site-packages/modal.py
 EXPOSE 80
 
 # Run app.py when the container launches
-CMD ["uvicorn", "app.grounded_cutouts:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uvicorn", "grounded_cutouts:app", "--host", "0.0.0.0", "--port", "80"]
