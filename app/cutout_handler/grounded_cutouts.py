@@ -111,12 +111,12 @@ class CutoutCreator:
         # Download image from s3
         image_path = self.s3.download_from_s3(data_path, image_name)
         if image_path is None:
-            print(f"Failed to download image {image_name} from S3")
+            logger.error(f"Failed to download image {image_name} from S3")
             return
 
         # Check if image exists
         if not os.path.exists(image_path):
-            print(f"Image {image_name} not found in folder {image_path}")
+            logger.error(f"Image {image_name} not found in folder {image_path}")
             return
 
         # Create cutouts directory if it doesn't exist

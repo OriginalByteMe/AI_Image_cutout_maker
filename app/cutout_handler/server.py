@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from modal import Secret, asgi_app
 from starlette.requests import Request
 
-from app.common import cutout_handler_stub, local_packages
+from app.common import cutout_handler_stub, local_packages, cutout_generator_image
 
 from .grounded_cutouts import CutoutCreator
 
@@ -125,7 +125,7 @@ async def create_cutouts(image_name: str, request: Request):
         )
 
         # Create the cutouts
-        print(f"CREATING CUTOUTS FOR IMAGE {image_name}")
+        logger.info(f"CREATING CUTOUTS FOR IMAGE {image_name}")
         cutout.create_cutouts(image_name)
         logger.info("Cutouts created for image %s", image_name)
 
