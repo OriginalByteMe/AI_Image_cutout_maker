@@ -99,12 +99,12 @@ class CutoutCreator:
         classes: str,
         grounding_dino_config_path: str,
         grounding_dino_checkpoint_path: str,
-        sam_checkpoint_path: str,
+        encoder_version: str = "vit_b",
     ):
         self.classes = classes
         self.grounding_dino_config_path = grounding_dino_config_path
         self.grounding_dino_checkpoint_path = grounding_dino_checkpoint_path
-        self.sam_checkpoint_path = sam_checkpoint_path
+        self.encoder_version = encoder_version
         self.HOME = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
 
     def __enter__(self):
@@ -122,8 +122,17 @@ class CutoutCreator:
         )
         self.s3 = Boto3Client()
         self.mask_annotator = sv.MaskAnnotator()
+
+        if self.encoder_version == "vit_b":
+            self.sam_checkpoint_path = SAM_CHECKPOINT_PATH_LOW
+        elif self.encoder_version == "vit_l":
+            self.sam_checkpoint_path = SAM_CHECKPOINT_PATH_MID
+        elif self.encoder_version == "vit_h":
+            self.sam_checkpoint_path = SAM_CHECKPOINT_PATH_HIGH
+
         self.segment = Segmenter(
-            sam_encoder_version="vit_h", sam_checkpoint_path=self.sam_checkpoint_path
+            sam_encoder_version=self.encoder_version,
+            sam_checkpoint_path=self.sam_checkpoint_path,
         )
 
     @method()
@@ -207,13 +216,13 @@ def main(
     classes: str,
     grounding_dino_config_path: str,
     grounding_dino_checkpoint_path: str,
-    sam_checkpoint_path: str,
+    encoder_version: str,
 ):
     return CutoutCreator(
         classes,
         grounding_dino_config_path,
         grounding_dino_checkpoint_path,
-        sam_checkpoint_path,
+        encoder_version,
     )
 
 
@@ -229,7 +238,7 @@ async def warmup():
         classes=[],
         grounding_dino_checkpoint_path=GROUNDING_DINO_CHECKPOINT_PATH,
         grounding_dino_config_path=GROUNDING_DINO_CONFIG_PATH,
-        sam_checkpoint_path=SAM_CHECKPOINT_PATH_LOW,
+        encoder_version="vit_b",
     )
 
     return "Warmed up!"
@@ -264,11 +273,13 @@ async def create_cutouts(image_name: str, request: Request):
 
         # Select the SAM checkpoint path based on the accuracy level
         if accuracy_level == "high":
-            sam_checkpoint_path = SAM_CHECKPOINT_PATH_HIGH
+            encoder_version = "vit_h"
+        elif accuracy_level == "mid":
+            encoder_version = "vit_l"
         elif accuracy_level == "low":
-            sam_checkpoint_path = SAM_CHECKPOINT_PATH_LOW
+            encoder_version = "vit_b"
         else:  # Default to mid if the accuracy level is not recognized
-            sam_checkpoint_path = SAM_CHECKPOINT_PATH_MID
+            encoder_version = "vit_b"
 
         # Initialize the S3 client and the CutoutCreator
         s3 = Boto3Client()
@@ -276,7 +287,7 @@ async def create_cutouts(image_name: str, request: Request):
             classes=classes,
             grounding_dino_checkpoint_path=GROUNDING_DINO_CHECKPOINT_PATH,
             grounding_dino_config_path=GROUNDING_DINO_CONFIG_PATH,
-            sam_checkpoint_path=sam_checkpoint_path,
+            encoder_version=encoder_version,
         )
 
         # Create the cutouts
@@ -317,7 +328,7 @@ async def create_all_cutouts(
         classes=classes,
         grounding_dino_checkpoint_path=GROUNDING_DINO_CHECKPOINT_PATH,
         grounding_dino_config_path=GROUNDING_DINO_CONFIG_PATH,
-        sam_checkpoint_path=SAM_CHECKPOINT_PATH,
+        encoder_version="vit_b",
     )
 
     result = {}
