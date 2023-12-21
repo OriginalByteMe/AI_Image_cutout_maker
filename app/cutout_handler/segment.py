@@ -1,4 +1,11 @@
-from app.common import cutout_handler_stub
+from app.common import cutout_handler_stub, cutout_generator_image
+
+
+with cutout_generator_image.imports():
+    import torch
+    from segment_anything import SamPredictor, sam_model_registry
+    import numpy as np
+
 
 cutout_handler_stub.cls()
 
@@ -11,9 +18,6 @@ class Segmenter:
         sam_encoder_version: str,
         sam_checkpoint_path: str,
     ):
-        import torch
-        from segment_anything import SamPredictor, sam_model_registry
-
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.sam = sam_model_registry[sam_encoder_version](
             checkpoint=sam_checkpoint_path
@@ -21,8 +25,6 @@ class Segmenter:
         self.sam_predictor = SamPredictor(self.sam)
 
     def segment(self, image: np.ndarray, xyxy: np.ndarray) -> np.ndarray:
-        import numpy as np
-
         self.sam_predictor.set_image(image)
         result_masks = []
         for box in xyxy:

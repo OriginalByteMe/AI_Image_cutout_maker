@@ -1,6 +1,10 @@
 from typing import List
 
-from app.common import cutout_handler_stub
+from app.common import cutout_handler_stub, cutout_generator_image
+
+with cutout_generator_image.imports():
+    import torch
+    from groundingdino.util.inference import Model
 
 cutout_handler_stub.cls()
 
@@ -16,8 +20,6 @@ class Dino:
         model_config_path,
         model_checkpoint_path,
     ):
-        import torch
-        from groundingdino.util.inference import Model
 
         self.classes = classes
         self.box_threshold = box_threshold

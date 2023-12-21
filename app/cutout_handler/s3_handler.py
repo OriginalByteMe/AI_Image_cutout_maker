@@ -1,14 +1,14 @@
-import logging
 import os
+import logging
+from app.common import s3_handler_stub, s3_handler_image
 
-from app.common import s3_handler_stub
+with s3_handler_image.imports():
+    import boto3
+    from botocore.exceptions import ClientError, BotoCoreError, NoCredentialsError
 
 s3_handler_stub.cls()
-
-
 class Boto3Client:
     def __init__(self):
-        import boto3
 
         self.s3 = boto3.client(
             "s3",
@@ -18,9 +18,6 @@ class Boto3Client:
         )
 
     def download_from_s3(self, save_path, image_name):
-        import boto3
-        from botocore.exceptions import ClientError
-
         s3_client = boto3.client("s3")
         file_path = os.path.join(save_path, image_name)
         try:
@@ -40,8 +37,6 @@ class Boto3Client:
         return file_path
 
     def upload_to_s3(self, file_body, folder, image_name):
-        from botocore.exceptions import BotoCoreError, NoCredentialsError
-
         try:
             self.s3.put_object(
                 Body=file_body,
@@ -60,8 +55,6 @@ class Boto3Client:
             raise
 
     def generate_presigned_urls(self, folder, expiration=3600):
-        from botocore.exceptions import ClientError
-
         try:
             response = self.s3.list_objects_v2(
                 Bucket=os.environ["CUTOUT_BUCKET"], Prefix=folder
@@ -86,16 +79,11 @@ class Boto3Client:
         return urls
 
     def generate_presigned_url_with_metadata(self, folder, key, expiration=3600):
-        from botocore.exceptions import ClientError
-
         try:
             # Generate presigned URL
             url = self.s3.generate_presigned_url(
                 "get_object",
-                Params={
-                    "Bucket": os.environ["CUTOUT_BUCKET"],
-                    "Key": f"{folder}/{key}",
-                },
+                Params={"Bucket": os.environ["CUTOUT_BUCKET"], "Key": f"{folder}/{key}"},
                 ExpiresIn=expiration,
             )
             # Get object metadata
