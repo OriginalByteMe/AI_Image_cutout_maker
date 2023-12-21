@@ -281,6 +281,14 @@ async def create_cutouts(image_name: str, request: Request):
 
         # Initialize the S3 client and the CutoutCreator
         s3 = Boto3Client()
+        """
+        Create cutouts for an image.
+
+        :param classes: The classes for the cutout
+        :param grounding_dino_config_path: The path to the DINO configuration
+        :param grounding_dino_checkpoint_path: The path to the DINO checkpoint
+        :param encoder_version: The version of the encoder based on the accuracy level
+        """
         cutout = CutoutCreator(
             classes=classes,
             grounding_dino_checkpoint_path=GROUNDING_DINO_CHECKPOINT_PATH,
