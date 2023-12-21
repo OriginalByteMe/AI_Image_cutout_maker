@@ -16,4 +16,5 @@ __pycache__/
 *.png
 cutout_generator-*
 Terraform/.terraform
+.env
 

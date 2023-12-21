@@ -101,14 +101,15 @@ class CutoutCreator:
         grounding_dino_checkpoint_path: str,
         sam_checkpoint_path: str,
     ):
+        from s3_handler import Boto3Client
         self.classes = classes
         self.grounding_dino_config_path = grounding_dino_config_path
         self.grounding_dino_checkpoint_path = grounding_dino_checkpoint_path
         self.sam_checkpoint_path = sam_checkpoint_path
         self.HOME = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
+        self.s3 = Boto3Client()
 
     def __enter__(self):
-        from s3_handler import Boto3Client
         from dino import Dino
         from segment import Segmenter
         import supervision as sv
@@ -120,7 +121,6 @@ class CutoutCreator:
             model_config_path=self.grounding_dino_config_path,
             model_checkpoint_path=self.grounding_dino_checkpoint_path,
         )
-        self.s3 = Boto3Client()
         self.mask_annotator = sv.MaskAnnotator()
         self.segment = Segmenter(
             sam_encoder_version="vit_h", sam_checkpoint_path=self.sam_checkpoint_path
@@ -216,6 +216,14 @@ def main(
         sam_checkpoint_path,
     )
 
+@app.get("/")
+async def root():
+    """Root endpoint for the API.
+
+    Returns:
+        _type_: return message
+    """
+    return "Hello world!"
 
 @app.get("/warmup")
 async def warmup():
@@ -281,7 +289,8 @@ async def create_cutouts(image_name: str, request: Request):
 
         # Create the cutouts
         print(f"CREATING CUTOUTS FOR IMAGE {image_name}")
-        cutout.create_cutouts.remote(image_name)
+        # cutout.create_cutouts.remote(image_name) # comment this out when using docker-compose
+        cutout.create_cutouts(image_name) # Uncomment this when using docker-compose
         logger.info("Cutouts created for image %s", image_name)
 
         # Generate presigned URLs for the cutouts
@@ -317,7 +326,7 @@ async def create_all_cutouts(
         classes=classes,
         grounding_dino_checkpoint_path=GROUNDING_DINO_CHECKPOINT_PATH,
         grounding_dino_config_path=GROUNDING_DINO_CONFIG_PATH,
-        sam_checkpoint_path=SAM_CHECKPOINT_PATH,
+        sam_checkpoint_path=SAM_CHECKPOINT_PATH_LOW,
     )
 
     result = {}
@@ -344,3 +353,4 @@ def cutout_app():
         FastAPI: FastAPI app for creating cutouts.
     """
     return app
+
