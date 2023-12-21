@@ -1,11 +1,15 @@
 import os
-import boto3
 import logging
-from botocore.exceptions import ClientError, BotoCoreError, NoCredentialsError
+from app.common import s3_handler_stub, s3_handler_image
 
+with s3_handler_image.imports():
+    import boto3
+    from botocore.exceptions import ClientError, BotoCoreError, NoCredentialsError
 
+s3_handler_stub.cls()
 class Boto3Client:
     def __init__(self):
+
         self.s3 = boto3.client(
             "s3",
             aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
