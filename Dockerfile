@@ -19,14 +19,17 @@ RUN apt-get update && \
     pip uninstall -y opencv-python && \
     pip install opencv-python==4.8.0.74 && \
     pip install -q supervision==0.6.0 && \
+    pip install segment_anything && \
+    pip install boto3 && \
+    pip install botocore && \
+    pip install fastapi && \
+    pip install starlette && \
     wget -q https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth -P app/weights/ && \
     wget -q https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth -P app/weights/ && \
     wget -q https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth -P app/weights/ && \
     wget -q https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth -P app/weights/ && \
     wget -q https://media.roboflow.com/notebooks/examples/dog.jpeg -P app/images/ 
 
-# Install Python dependencies
-RUN pip install --no-cache-dir segment-anything opencv-python botocore boto3 fastapi starlette
 
 # Copy over dummy modal package to replace the modal package used, to prevent modal errors
 ENV PYTHONPATH "${PYTHONPATH}:/usr/local/lib/python3.8/site-packages/"

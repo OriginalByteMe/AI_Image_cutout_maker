@@ -10,10 +10,10 @@ services:
     volumes:
       - .:/docker
     environment:
-      - AWS_ACCESS_KEY_ID=your_access_key
-      - AWS_SECRET_ACCESS_KEY=your_secret_key
-      - AWS_REGION=your_region
-      - CUTOUT_BUCKET=your_bucket
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_REGION
+      - CUTOUT_BUCKET
     deploy:
       resources:
         reservations:
