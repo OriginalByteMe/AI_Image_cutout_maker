@@ -123,13 +123,13 @@ class CutoutCreator:
         self.s3 = Boto3Client()
         self.mask_annotator = sv.MaskAnnotator()
 
-        if self.encoder_version == "vit_b":
-            self.sam_checkpoint_path = SAM_CHECKPOINT_PATH_LOW
-        elif self.encoder_version == "vit_l":
-            self.sam_checkpoint_path = SAM_CHECKPOINT_PATH_MID
-        elif self.encoder_version == "vit_h":
-            self.sam_checkpoint_path = SAM_CHECKPOINT_PATH_HIGH
+        encoder_checkpoint_paths = {
+            "vit_b": SAM_CHECKPOINT_PATH_LOW,
+            "vit_l": SAM_CHECKPOINT_PATH_MID,
+            "vit_h": SAM_CHECKPOINT_PATH_HIGH,
+        }
 
+        self.sam_checkpoint_path = encoder_checkpoint_paths.get(self.encoder_version)
         self.segment = Segmenter(
             sam_encoder_version=self.encoder_version,
             sam_checkpoint_path=self.sam_checkpoint_path,
@@ -272,14 +272,12 @@ async def create_cutouts(image_name: str, request: Request):
         logger.info("Accuracy level: %s", accuracy_level)
 
         # Select the SAM checkpoint path based on the accuracy level
-        if accuracy_level == "high":
-            encoder_version = "vit_h"
-        elif accuracy_level == "mid":
-            encoder_version = "vit_l"
-        elif accuracy_level == "low":
-            encoder_version = "vit_b"
-        else:  # Default to mid if the accuracy level is not recognized
-            encoder_version = "vit_b"
+        accuracy_encoder_versions = {
+            "high": "vit_h",
+            "mid": "vit_l",
+            "low": "vit_b",
+        }
+        encoder_version = accuracy_encoder_versions.get(accuracy_level, "vit_b")
 
         # Initialize the S3 client and the CutoutCreator
         s3 = Boto3Client()
@@ -307,6 +305,7 @@ async def create_cutouts(image_name: str, request: Request):
             "An error occurred while creating cutouts for image %s: %s", image_name, e
         )
         raise
+
 
 @app.post("/create-cutouts")
 async def create_all_cutouts(
