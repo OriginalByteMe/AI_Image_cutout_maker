@@ -1,11 +1,13 @@
-import torch
-from groundingdino.util.inference import Model
 from typing import List
+
+from app.common import cutout_handler_stub
+
+cutout_handler_stub.cls()
 
 
 class Dino:
-    """ A class for object detection using GroundingDINO.
-    """
+    """A class for object detection using GroundingDINO."""
+
     def __init__(
         self,
         classes,
@@ -14,6 +16,9 @@ class Dino:
         model_config_path,
         model_checkpoint_path,
     ):
+        import torch
+        from groundingdino.util.inference import Model
+
         self.classes = classes
         self.box_threshold = box_threshold
         self.text_threshold = text_threshold

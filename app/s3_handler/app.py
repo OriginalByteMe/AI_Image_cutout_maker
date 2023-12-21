@@ -1,9 +1,9 @@
-from modal import Mount, Image, Secret, Stub, asgi_app
-import os
 import logging
-from fastapi import FastAPI, File, UploadFile, Body, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+import os
 
+from fastapi import Body, FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from modal import Image, Mount, Secret, Stub, asgi_app
 
 stub = Stub(name="s3_handler")
 
@@ -22,6 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # ================================================
 #  API Endpoints
 # ================================================
@@ -35,9 +36,9 @@ async def upload_image_to_s3(image: UploadFile = File(...)):
     Returns:
         str: Message indicating whether the upload was successful.
     """
-    from s3_handler import Boto3Client
     from botocore.exceptions import BotoCoreError, NoCredentialsError
-    
+    from s3_handler import Boto3Client
+
     s3_client = Boto3Client()
     try:
         s3_client.upload_to_s3(image.file, "images", image.filename)
@@ -46,8 +47,11 @@ async def upload_image_to_s3(image: UploadFile = File(...)):
     except BotoCoreError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail="An error occurred while uploading the image") from e
+        raise HTTPException(
+            status_code=500, detail="An error occurred while uploading the image"
+        ) from e
     return {"message": "Image uploaded successfully", "status_code": 200}
+
 
 @app.get("/generate-presigned-urls/{image_name}")
 async def generate_presigned_urls(image_name: str):
@@ -65,7 +69,7 @@ async def generate_presigned_urls(image_name: str):
     return s3_client.generate_presigned_urls(f"cutouts/{image_name}")
 
 
-@app.get('/get-image/{image_name}')
+@app.get("/get-image/{image_name}")
 async def get_image(image_name: str):
     """Get an image from S3.
 
@@ -75,8 +79,8 @@ async def get_image(image_name: str):
     Returns:
         FileResponse: FileResponse object containing the image.
     """
-    from s3_handler import Boto3Client
     from fastapi.responses import FileResponse
+    from s3_handler import Boto3Client
 
     s3_client = Boto3Client()
     data = s3_client.generate_presigned_url_with_metadata("images", image_name)
@@ -86,12 +90,26 @@ async def get_image(image_name: str):
 
 
 @stub.function(
-    image=Image.debian_slim().pip_install("boto3", "fastapi", "starlette", "uvicorn", "python-multipart", "pydantic", "requests", "httpx", "httpcore", "httpx[http2]", "httpx[http1]"), mounts=[Mount.from_local_python_packages("s3_handler")], secret=Secret.from_name("my-aws-secret")
+    image=Image.debian_slim().pip_install(
+        "boto3",
+        "fastapi",
+        "starlette",
+        "uvicorn",
+        "python-multipart",
+        "pydantic",
+        "requests",
+        "httpx",
+        "httpcore",
+        "httpx[http2]",
+        "httpx[http1]",
+    ),
+    mounts=[Mount.from_local_python_packages("s3_handler")],
+    secret=Secret.from_name("my-aws-secret"),
 )
-
 @asgi_app()
 def main():
     return app
+
 
 # =================================
 #  Modal s3 functions
@@ -104,7 +122,7 @@ def main():
 #     from botocore.exceptions import ClientError, BotoCoreError, NoCredentialsError
 
 #     s3_client = Boto3Client()
-    
+
 #     try:
 #         s3_client.upload_to_s3(file_body, folder, image_name)
 #         logging.info(f"Successfully uploaded {image_name} to {folder}")
