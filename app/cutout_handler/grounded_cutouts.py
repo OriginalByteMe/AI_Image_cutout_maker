@@ -10,6 +10,7 @@ from fastapi import Body, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from modal import Image, Mount, Secret, Stub, asgi_app, method
 from starlette.requests import Request
+from PIL import Image
 
 from .dino import Dino
 from .s3_handler import Boto3Client
@@ -78,22 +79,31 @@ class CutoutCreator:
             sam_encoder_version=self.encoder_version,
             sam_checkpoint_path=self.sam_checkpoint_path,
         )
-
-    def create_annotated_image(self, image, image_name, detections: Dict[str, list]):
+    def create_annotated_image(self, image, image_name, detections):
         """Create a highlighted annotated image from an image and detections.
 
         Args:
             image (File): Image to be used for creating the annotated image.
             image_name (string): name of image
-            detections (Dict[str, list]): annotations for the image
+            detections (Detections): annotations for the image
         """
-        annotated_image = self.mask_annotator.annotate(
-            scene=image, detections=detections
-        )
+        print(f"Detections: {detections}")
+
+        # Convert detections to masks
+        detections.mask = self.segment.segment( cv2.cvtColor(image, cv2.COLOR_BGR2RGB), detections.xyxy)
+
+        # Annotate image with detections
+        box_annotator = sv.BoxAnnotator()
+        mask_annotator = sv.MaskAnnotator()
+        labels = [f"{self.classes[class_id]} {confidence:0.2f}" for confidence, class_id in zip(detections.confidence, detections.class_id)]
+        annotated_image = mask_annotator.annotate(scene=image.copy(), detections=detections)
+        annotated_image = box_annotator.annotate(scene=annotated_image, detections=detections, labels=labels)
+
         # Convert annotated image to bytes
         img_bytes = io.BytesIO()
         Image.fromarray(np.uint8(annotated_image)).save(img_bytes, format="PNG")
         img_bytes.seek(0)
+
         # Upload bytes to S3
         self.s3.upload_to_s3(img_bytes.read(), "cutouts", f"{image_name}_annotated.png")
 
@@ -148,4 +158,4 @@ class CutoutCreator:
                 self.s3.upload_to_s3(f.read(), "cutouts", f"{image_name}/{cutout_name}")
 
         # Create annotated image
-        # self.create_annotated_image(image, f"{image_name}_{i}", detections)
+        self.create_annotated_image(image, f"{image_name}", detections)
