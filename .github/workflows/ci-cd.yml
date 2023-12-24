@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
 
 jobs:
   deploy:
@@ -27,12 +28,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install modal
 
+      - name: Set environment
+        id: vars
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "::set-output name=environment::main"
+          else
+            echo "::set-output name=environment::dev"
+          fi
       - name: Deploy cutout generator job
         run: |
-          cd app
-          modal deploy grounded_cutouts.py
+          modal deploy --env=${{ steps.vars.outputs.environment }} app.cutout_handler::cutout_handler_stub
       - name: Deploy s3_handler job
         run: |
-          cd app/s3_handler
-          modal deploy app.py
+          modal deploy --env=${{ steps.vars.outputs.environment }} app.s3_handler.app 
           

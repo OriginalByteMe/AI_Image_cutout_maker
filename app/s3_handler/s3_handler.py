@@ -1,7 +1,8 @@
-import os
-import boto3
 import logging
-from botocore.exceptions import ClientError, BotoCoreError, NoCredentialsError
+import os
+
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 
 
 class Boto3Client:
@@ -76,7 +77,10 @@ class Boto3Client:
             # Generate presigned URL
             url = self.s3.generate_presigned_url(
                 "get_object",
-                Params={"Bucket": os.environ["CUTOUT_BUCKET"], "Key": f"{folder}/{key}"},
+                Params={
+                    "Bucket": os.environ["CUTOUT_BUCKET"],
+                    "Key": f"{folder}/{key}",
+                },
                 ExpiresIn=expiration,
             )
             # Get object metadata

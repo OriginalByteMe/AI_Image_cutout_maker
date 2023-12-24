@@ -1,15 +1,17 @@
-from typing import Dict
-import os
 import io
+import os
+from typing import Dict
+
 import cv2
 import numpy as np
-from s3_handler import Boto3Client
-from dino import Dino
-from segment import Segmenter
-from PIL import Image
 import supervision as sv
+from dino import Dino
+from PIL import Image
+from s3_handler import Boto3Client
+from segment import Segmenter
 
 HOME = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
+
 
 class CutoutCreator:
     """
@@ -20,7 +22,13 @@ class CutoutCreator:
       s3: A Boto3Client object for uploading to S3.
       mask_annotator: A MaskAnnotator object for annotating images with masks.
     """
-    def __init__(self, classes: str, grounding_dino_config_path: str, grounding_dino_checkpoint_path: str):
+
+    def __init__(
+        self,
+        classes: str,
+        grounding_dino_config_path: str,
+        grounding_dino_checkpoint_path: str,
+    ):
         self.dino = Dino(
             classes=classes,
             box_threshold=0.35,

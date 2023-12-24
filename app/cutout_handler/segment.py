@@ -1,9 +1,18 @@
-import numpy as np
-import torch
-from segment_anything import sam_model_registry, SamPredictor
+from app.common import cutout_handler_stub, cutout_generator_image
+
+
+with cutout_generator_image.imports():
+    import torch
+    from segment_anything import SamPredictor, sam_model_registry
+    import numpy as np
+
+
+cutout_handler_stub.cls()
 
 
 class Segmenter:
+    import numpy as np
+
     def __init__(
         self,
         sam_encoder_version: str,
