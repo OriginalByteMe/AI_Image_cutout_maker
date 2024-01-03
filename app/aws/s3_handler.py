@@ -1,12 +1,15 @@
-import logging
 import os
+import logging
+from app.common import s3_handler_stub, s3_handler_image
 
-import boto3
-from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
+with s3_handler_image.imports():
+    import boto3
+    from botocore.exceptions import ClientError, BotoCoreError, NoCredentialsError
 
-
+s3_handler_stub.cls()
 class Boto3Client:
     def __init__(self):
+
         self.s3 = boto3.client(
             "s3",
             aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
@@ -21,6 +24,9 @@ class Boto3Client:
             s3_client.download_file(
                 os.environ["CUTOUT_BUCKET"], f"images/{image_name}", file_path
             )
+            print(f"Successfully downloaded {image_name} to {file_path}")
+            print("Directory contents:")
+            print(os.listdir(save_path))
         except ClientError as e:
             print("BOTO error: ", e)
             print(
@@ -77,10 +83,7 @@ class Boto3Client:
             # Generate presigned URL
             url = self.s3.generate_presigned_url(
                 "get_object",
-                Params={
-                    "Bucket": os.environ["CUTOUT_BUCKET"],
-                    "Key": f"{folder}/{key}",
-                },
+                Params={"Bucket": os.environ["CUTOUT_BUCKET"], "Key": f"{folder}/{key}"},
                 ExpiresIn=expiration,
             )
             # Get object metadata
