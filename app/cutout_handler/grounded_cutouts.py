@@ -13,7 +13,7 @@ from starlette.requests import Request
 from PIL import Image
 
 from .dino import Dino
-from .s3_handler import Boto3Client
+from app.aws.s3_handler import Boto3Client
 from .segment import Segmenter
 
 # ======================
