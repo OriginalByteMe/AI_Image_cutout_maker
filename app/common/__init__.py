@@ -25,6 +25,18 @@ cutout_generator_image = (
     )
 )
 
+cpu_cutout_handler_image = (
+    Image.debian_slim()
+    .pip_install(
+        "git+https://github.com/ChaoningZhang/MobileSAM.git", "timm", "opencv-python"
+    )
+    .run_commands(
+        "apt-get update",
+        "apt-get install liblzma-dev",
+        "pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu",
+    )
+)
+
 local_packages = Mount.from_local_python_packages(
     "app.cutout_handler.dino",
     "app.cutout_handler.segment",
@@ -33,4 +45,7 @@ local_packages = Mount.from_local_python_packages(
 )
 
 cutout_handler_stub = Stub(image=cutout_generator_image, name="cutout_generator")
+cpu_cutout_handler_stub = Stub(
+    image=cpu_cutout_handler_image, name="cpu_cutout_generator"
+)
 s3_handler_stub = Stub(image=s3_handler_image, name="s3_handler")
