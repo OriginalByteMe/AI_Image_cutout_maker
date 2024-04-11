@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "cutout-generator"
+version = "1.0.0"
+description = "A AI cutout generator, specify the classes and it will use them as subjects to cut them out the specified images"
+authors = ["OriginalByteMe <noahrijkaard@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+modal = "^0.62.54"
+supervision = "^0.19.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
