@@ -92,7 +92,7 @@ async def create_cutouts(image_name: str, request: Request):
     Returns:
         _type_: _description_
     """
-    from s3_handler import Boto3Client
+    from .s3_handler import Boto3Client
 
     try:
         # Log the start of the process
@@ -177,7 +177,7 @@ async def create_all_cutouts(
 @cutout_handler_stub.function(
     gpu="T4",
     mounts=[local_packages],
-    secret=Secret.from_name("my-aws-secret"),
+    secrets=[Secret.from_name("my-aws-secret")],
     container_idle_timeout=300,
     retries=1,
 )
