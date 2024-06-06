@@ -7,9 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from modal import Secret, asgi_app
 from starlette.requests import Request
 
-from app.common import cutout_handler_app, local_packages, cutout_generator_image
+from app.common import cutout_handler_app, local_packages
 
-from .grounded_cutouts import CutoutCreator
 
 # ======================
 # Constants
@@ -69,6 +68,7 @@ async def warmup():
     Returns:
         _type_: return message
     """
+    from grounded_cutouts import CutoutCreator
     # Spins up the container and loads the models, this will make it easier to create cutouts later
     CutoutCreator(
         classes=[],
@@ -177,7 +177,7 @@ async def create_all_cutouts(
 @cutout_handler_app.function(
     gpu="T4",
     mounts=[local_packages],
-    secret=Secret.from_name("my-aws-secret"),
+    secrets=[Secret.from_name("my-aws-secret")],
     container_idle_timeout=300,
     retries=1,
 )

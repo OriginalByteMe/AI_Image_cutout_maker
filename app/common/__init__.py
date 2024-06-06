@@ -33,4 +33,5 @@ local_packages = Mount.from_local_python_packages(
 )
 
 cutout_handler_app = App(image=cutout_generator_image, name="cutout_generator")
+s3_handler_cutouts_app = App(image=s3_handler_image, name="s3_handler_cutouts")
 s3_handler_app = App(image=s3_handler_image, name="s3_handler")
