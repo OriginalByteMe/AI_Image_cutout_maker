@@ -39,8 +39,8 @@ jobs:
           fi
       - name: Deploy cutout generator job
         run: |
-          modal deploy --env=${{ steps.vars.outputs.environment }} app.cutout_handler::cutout_handler_stub
+          modal deploy --env=${{ steps.vars.outputs.environment }} app.cutout_handler::cutout_handler_app
       - name: Deploy s3_handler job
         run: |
-          modal deploy --env=${{ steps.vars.outputs.environment }} app.s3_handler.app 
+          modal deploy --env=${{ steps.vars.outputs.environment }} app.s3::s3_handler_app
           

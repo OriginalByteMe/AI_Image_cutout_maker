@@ -1,4 +1,4 @@
-from app.common import cutout_handler_stub, cutout_generator_image
+from app.common import cutout_handler_app, cutout_generator_image
 
 
 with cutout_generator_image.imports():
@@ -7,7 +7,7 @@ with cutout_generator_image.imports():
     import numpy as np
 
 
-cutout_handler_stub.cls()
+cutout_handler_app.cls()
 
 
 class Segmenter:

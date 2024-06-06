@@ -1,12 +1,12 @@
 import os
 import logging
-from app.common import s3_handler_stub, s3_handler_image
+from app.common import s3_handler_app, s3_handler_image
 
 with s3_handler_image.imports():
     import boto3
     from botocore.exceptions import ClientError, BotoCoreError, NoCredentialsError
 
-s3_handler_stub.cls()
+s3_handler_app.cls()
 class Boto3Client:
     def __init__(self):
 
