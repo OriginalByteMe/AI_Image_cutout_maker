@@ -1,12 +1,12 @@
 from typing import List
 
-from app.common import cutout_handler_stub, cutout_generator_image
+from app.common import cutout_handler_app, cutout_generator_image
 
 with cutout_generator_image.imports():
     import torch
     from groundingdino.util.inference import Model
 
-cutout_handler_stub.cls()
+cutout_handler_app.cls()
 
 
 class Dino:

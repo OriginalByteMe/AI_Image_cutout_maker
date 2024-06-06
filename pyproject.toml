@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "ai-image-cutout-maker"
+version = "0.1.0"
+description = ""
+authors = ["OriginalByteMe <noahrijkaard@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+modal = "^0.62.203"
+boto3 = "^1.34.120"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
