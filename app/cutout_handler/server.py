@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from modal import Secret, asgi_app
 from starlette.requests import Request
 
-from app.common import cutout_handler_stub, local_packages, cutout_generator_image
+from app.common import cutout_handler_app, local_packages, cutout_generator_image
 
 from .grounded_cutouts import CutoutCreator
 
@@ -174,7 +174,7 @@ async def create_all_cutouts(
     return result
 
 
-@cutout_handler_stub.function(
+@cutout_handler_app.function(
     gpu="T4",
     mounts=[local_packages],
     secret=Secret.from_name("my-aws-secret"),

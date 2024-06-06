@@ -4,8 +4,10 @@ import os
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 
-
 class Boto3Client:
+    """
+    A class to handle S3 operations.
+    """
     def __init__(self):
         self.s3 = boto3.client(
             "s3",
