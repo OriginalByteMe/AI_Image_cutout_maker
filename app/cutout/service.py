@@ -23,7 +23,6 @@ from app.common import (
     huggingface_secret,
     model_cache,
 )
-from app.cutout import postprocess
 from app.s3_utils import (
     CUTOUTS_PREFIX,
     IMAGES_PREFIX,
@@ -33,11 +32,15 @@ from app.s3_utils import (
     get_s3,
 )
 
+# postprocess pulls in numpy/PIL, which only exist in the GPU image — the
+# CPU gateway imports this module too, so keep them inside imports().
 with gpu_image.imports():
     import cv2
     import numpy as np
     import torch
     from PIL import Image
+
+    from app.cutout import postprocess
 
 # Hard cap so a single video job stays within sane GPU-time bounds.
 MAX_VIDEO_FRAMES = 1200

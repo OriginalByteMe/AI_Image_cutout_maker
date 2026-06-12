@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install modal "numpy<2" pillow pytest ruff fastapi pydantic boto3
+          pip install modal "numpy<2" pillow pytest ruff fastapi pydantic boto3 python-multipart
 
       - name: Lint
         run: ruff check app tests
@@ -43,10 +43,10 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install Modal
+      - name: Install Modal and deploy-time imports
         run: |
           python -m pip install --upgrade pip
-          pip install modal
+          pip install modal fastapi pydantic boto3 python-multipart
 
       - name: Set environment
         id: vars
