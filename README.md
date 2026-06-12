@@ -1,76 +1,110 @@
 # AI Image Cutout Maker
 
-AI Image Cutout Maker is a project that uses artificial intelligence to automatically create cutouts from images. This project is designed to simplify the process of creating cutouts, which can be a time-consuming task if done manually.
+Text-prompted image & video cutouts powered by [SAM 3 (Segment Anything with
+Concepts)](https://github.com/facebookresearch/sam3), deployed serverlessly on
+[Modal](https://modal.com).
 
-This project utilizes the power of Segment Anything and Grounding Dino AI models to detect subjects in an image and cut them out. These models are hosted on Modal, which allows us to leverage GPU acceleration for faster and more efficient processing.
+Describe what you want cut out — "dog", "person in a red hat" — and the
+service finds **every instance** of that concept, cuts it out with a
+transparent background, and (optionally) packages each one as a
+WhatsApp-compatible sticker (512x512 WebP, < 100 KB). Videos work too: the
+concept is tracked across frames and rendered as a transparent-background
+WebM.
 
-The cutouts are then stored in an Amazon S3 bucket, providing a scalable and secure storage solution. This setup allows us to handle large volumes of images and serve them quickly and efficiently.
+## Architecture
 
-## Project Structure
-
-The project is structured as follows:
-
-- `app/`: This directory contains the main application code.
-  - `cutout.py`: This script handles the process of creating cutouts from images using the Segment Anything and Grounding Dino AI models.
-  - `dino.py`: This script is responsible for interacting with the Grounding Dino AI model.
-  - `segment.py`: This script is used for interacting with the Segment Anything AI model.
-  - `s3_handler.py`: This script handles interactions with Amazon S3, such as uploading and downloading images.
-  - `grounded_cutouts.py`: This script ...
-
-- `.venv/`: This directory contains the virtual environment for the project.
-
-- `modal_utils/`: This directory contains utility functions used throughout the project.
-
-- `grpc_utils.py`: This script handles the gRPC connections in the project.
-
-
-## Purpose of the Project
-
-The purpose of this project is to automate the process of creating cutouts from images. By using artificial intelligence, we can create accurate cutouts much faster than would be possible manually. This can be useful in a variety of applications, such as graphic design, image editing, and more. There is also the social media aspect of creating stickers out of items cut out of an image, which is a popular trend on social media platforms such as Instagram and TikTok.
-
-## How to Use
-
-As mentioned above, this project is being hosted through Modal, this also does mean that its using the modal API. This means that you will need to have a modal account and have the modal CLI installed. You can find instructions on how to do this [here](https://docs.modal.ai/docs/getting-started). I'am planning on dockerizing this project as well down the line so that it can be used without the modal CLI.
-
-
-## Workflow diagriam for how BE processes and returns values
-```mermaid
-sequenceDiagram
-    actor User
-    User ->> CutoutFE: Upload Image
-    CutoutFE ->> S3: Call to push image to bucket
-    CutoutFE ->> CutoutBE: Call to create cutout
-    CutoutBE ->>+ Modal: Spin up instance with container
-    Modal ->>- CutoutBE: Allow that container to be used by CutoutBE URL 
-    CutoutBE ->>+ S3: Download image 
-    S3 -->>- CutoutBE: Send Image back
-    Note over CutoutBE: Processes cutouts + other diagrams
-    CutoutBE -->> S3: Upload cutouts to bucket
-    Note over CutoutBE: Generates Pre-signed URL's of processed files
-    Note over CutoutFE: If need be FE can also create list of presigned urls via s3
-    CutoutBE -->>+ CutoutFE: Return list of presigned urls
-    CutoutFE -->>+ User: Display processed images
-    User ->> S3: Download images via url
+```
+                ┌─────────────────────────────────────────────┐
+                │ Modal app: cutout-generator                 │
+ Frontend ───►  │  api (CPU, FastAPI gateway)                 │
+                │   ├── uploads / presigned URLs ──► S3       │
+                │   └── fan-out via .remote/.spawn            │
+                │  SAM3Service (GPU, A10G)                    │
+                │   ├── @modal.enter(): model loaded once     │
+                │   ├── segment_image()  - parallel per image │
+                │   └── segment_video()  - async job          │
+                └─────────────────────────────────────────────┘
 ```
 
+Key properties:
 
-## To-Do
+- **Models load once per container** (`@modal.enter`), not once per request.
+- **Bulk requests fan out** — Modal autoscales GPU containers, so 10 images
+  take roughly the time of 1.
+- **Checkpoints are cached in a Modal Volume**, so only the very first cold
+  start pays the HuggingFace download.
+- **One model replaces two**: SAM 3's open-vocabulary text prompting replaces
+  the old GroundingDINO + SAM v1 pipeline.
 
-Here are some tasks that are on our roadmap:
+## API
 
-- Dockerize the project: We plan to create a Dockerfile for this project to make it easier to set up and run in any environment.
-- API Documentation: We will be writing comprehensive API documentation to make it easier for developers to understand and use our API.
-- Improve error handling: We aim to improve our error handling to make our API more robust and reliable.
-- Add more AI models: We are planning to integrate more AI models to improve the accuracy and versatility of our image cutout creation.
-- Optimize performance: We will be working on optimizing the performance of our API, particularly in terms of processing speed and resource usage.
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/health` | Liveness check |
+| `GET` | `/warmup` | Pre-boot a GPU container (non-blocking) |
+| `POST` | `/images` | Upload up to 50 images (multipart `files`) |
+| `GET` | `/images/{name}` | Presigned URL + metadata for an uploaded image |
+| `POST` | `/cutouts` | `{image_names, prompts, create_stickers, score_threshold}` → cutout + sticker URLs per image |
+| `POST` | `/videos` | Upload one video (mp4/mov/webm, ≤ 100 MB) |
+| `POST` | `/video-cutouts` | `{video_name, prompt}` → `{job_id}` (async) |
+| `GET` | `/jobs/{job_id}` | Poll a video job: `running` / `done` / `failed` |
 
-Please note that this is not an exhaustive list and the roadmap may change based on project needs and priorities.
+Interactive docs are served at `/docs` on the deployed gateway URL.
 
-## Contributing
+## Setup
 
-This is a personal project so it won't really be geared to any contributions, but feel free to fork the repository and make any changes you want. If you have any questions, feel free to reach out to me at my [email](mailto:noahrijkaard@gmail.com)
+1. **Modal secrets** (one-time):
 
-## License
+   ```bash
+   # AWS credentials for the S3 bucket
+   modal secret create my-aws-secret \
+     AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... \
+     AWS_REGION=... CUTOUT_BUCKET=cutout-image-store
 
-This project is licensed under the terms of the [MIT License](LICENSE).
+   # HuggingFace token — request access to the gated checkpoints first:
+   # https://huggingface.co/facebook/sam3
+   modal secret create huggingface-secret HF_TOKEN=hf_...
+   ```
 
+2. **Deploy:**
+
+   ```bash
+   pip install modal
+   modal deploy -m app.main
+   ```
+
+   To use a bigger GPU: `CUTOUT_GPU=L40S modal deploy -m app.main`.
+
+3. **Local dev loop:**
+
+   ```bash
+   modal serve -m app.main   # hot-reloading dev deployment
+   pytest                    # unit tests (no GPU needed)
+   ruff check app tests      # lint
+   ```
+
+## CI/CD
+
+`.github/workflows/ci-cd.yml` lints and tests on every push/PR, then deploys
+to Modal on pushes to `main` (env `main`) and `develop` (env `dev`). Requires
+`MODAL_TOKEN_ID` / `MODAL_TOKEN_SECRET` repository secrets.
+
+## Repository layout
+
+```
+app/
+├── main.py              # deploy entrypoint (modal deploy -m app.main)
+├── common/              # Modal app, images, volume, secrets
+├── api.py               # FastAPI gateway (CPU container)
+├── schemas.py           # Pydantic request/response models
+├── s3_utils.py          # single shared S3 client
+└── cutout/
+    ├── service.py       # SAM3Service GPU class
+    └── postprocess.py   # mask → transparent PNG / WhatsApp sticker (pure, tested)
+tests/                   # unit tests for postprocess
+Terraform/               # S3 bucket (note: objects expire after 1 day)
+legacy_code/             # pre-SAM3 implementation, kept for reference
+```
+
+> **Note:** the Terraform-managed bucket has a 1-day lifecycle expiry, so
+> uploads, cutouts and stickers disappear after 24h by design.

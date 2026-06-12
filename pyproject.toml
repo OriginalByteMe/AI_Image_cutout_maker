@@ -1,16 +1,32 @@
-[tool.poetry]
+[project]
 name = "ai-image-cutout-maker"
-version = "0.1.0"
-description = ""
-authors = ["OriginalByteMe <noahrijkaard@gmail.com>"]
+version = "2.0.0"
+description = "Text-prompted image & video cutouts powered by SAM 3, deployed on Modal"
+authors = [{ name = "OriginalByteMe", email = "noahrijkaard@gmail.com" }]
 readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "modal>=1.5",
+    "boto3>=1.35",
+    "fastapi>=0.115",
+    "pydantic>=2.9",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-modal = "^0.62.203"
-boto3 = "^1.34.120"
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.8",
+    "numpy>=1.26,<2",
+    "pillow>=11",
+]
 
+[tool.ruff]
+line-length = 100
+target-version = "py311"
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

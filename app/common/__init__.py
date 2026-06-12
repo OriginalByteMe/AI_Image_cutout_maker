@@ -1,37 +1,64 @@
-from modal import Image, Mount, App
+"""Shared Modal resources: app, container images, volumes and secrets.
 
-s3_handler_image = Image.debian_slim().pip_install("boto3", "botocore")
+Everything that needs to be referenced from more than one module lives here so
+that `modal deploy -m app.main` can wire the whole application together.
+"""
 
-cutout_generator_image = (
-    Image.from_registry("nvcr.io/nvidia/pytorch:22.12-py3")
+import os
+
+import modal
+
+APP_NAME = "cutout-generator"
+
+# Pinned for reproducible image builds. Bump deliberately when upgrading SAM 3.
+SAM3_GIT_COMMIT = "8e451d5eb43c817b64ae7577fb7b9ae223db88a9"
+
+# GPU used for inference. SAM 3 is an 848M parameter model; A10G (24GB) is a
+# good price/performance default. Override at deploy time with e.g.
+# `CUTOUT_GPU=L40S modal deploy -m app.main`.
+GPU_TYPE = os.environ.get("CUTOUT_GPU", "A10G")
+
+# Where the HuggingFace checkpoint cache volume is mounted inside containers.
+CACHE_DIR = "/cache"
+
+app = modal.App(APP_NAME)
+
+# Persists SAM 3 checkpoints across container restarts so only the very first
+# cold start pays the download cost.
+model_cache = modal.Volume.from_name("sam3-model-cache", create_if_missing=True)
+
+# AWS credentials for the S3 bucket (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
+# AWS_REGION, CUTOUT_BUCKET).
+aws_secret = modal.Secret.from_name("my-aws-secret")
+
+# HuggingFace token with access to the gated facebook/sam3 repository.
+# Create with: modal secret create huggingface-secret HF_TOKEN=hf_...
+huggingface_secret = modal.Secret.from_name("huggingface-secret")
+
+# GPU image: PyTorch + SAM 3 + ffmpeg (for video matting output).
+gpu_image = (
+    modal.Image.debian_slim(python_version="3.12")
+    .apt_install("git", "ffmpeg", "libgl1", "libglib2.0-0")
+    .pip_install("torch==2.10.0", "torchvision")
+    .pip_install(f"git+https://github.com/facebookresearch/sam3.git@{SAM3_GIT_COMMIT}")
     .pip_install(
-        "segment-anything", "opencv-python", "botocore", "boto3", "fastapi", "starlette"
+        "opencv-python-headless~=4.10",
+        "pillow~=11.0",
+        "boto3~=1.35",
+        "huggingface_hub",
     )
-    .run_commands(
-        "apt-get update",
-        "apt-get install -y git wget libgl1-mesa-glx libglib2.0-0",
-        "git clone https://github.com/IDEA-Research/GroundingDINO.git",
-        "pip install -q -e GroundingDINO/",
-        "mkdir -p /weights",
-        "mkdir -p /data",
-        "pip uninstall -y supervision",
-        "pip uninstall -y opencv-python",
-        "pip install opencv-python==4.8.0.74",
-        "pip install -q supervision==0.6.0",
-        "wget -q https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth -P weights/",
-        "wget -q https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth -P weights/",
-        "wget -q https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth -P weights/",
-        "wget -q https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth -P weights/",
-    )
+    .env({"HF_HOME": f"{CACHE_DIR}/huggingface"})
+    .add_local_python_source("app")
 )
 
-local_packages = Mount.from_local_python_packages(
-    "app.cutout_handler.dino",
-    "app.cutout_handler.segment",
-    "app.cutout_handler.s3_handler",
-    "app.cutout_handler.grounded_cutouts",
+# Lightweight CPU image for the FastAPI gateway.
+web_image = (
+    modal.Image.debian_slim(python_version="3.12")
+    .pip_install(
+        "fastapi~=0.115",
+        "pydantic~=2.9",
+        "python-multipart~=0.0.20",
+        "boto3~=1.35",
+    )
+    .add_local_python_source("app")
 )
-
-cutout_handler_app = App(image=cutout_generator_image, name="cutout_generator")
-s3_handler_cutouts_app = App(image=s3_handler_image, name="s3_handler_cutouts")
-s3_handler_app = App(image=s3_handler_image, name="s3_handler")
